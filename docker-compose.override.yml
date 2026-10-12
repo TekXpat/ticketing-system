@@ -1,0 +1,28 @@
+# Development overrides, merged automatically by `docker compose up`.
+# The web app becomes `next dev` with your working tree mounted for hot reload.
+# To run the production-like stack instead:
+#   docker compose -f docker-compose.yml up --build
+
+services:
+  migrate:
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+
+  web:
+    build:
+      target: dev
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+      - next_cache:/app/.next
+    environment:
+      # File events do not always cross the Docker Desktop bind mount; poll.
+      WATCHPACK_POLLING: "true"
+    healthcheck:
+      # The first request compiles the route, which takes a while in dev.
+      start_period: 120s
+
+volumes:
+  node_modules:
+  next_cache:

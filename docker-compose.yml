@@ -1,0 +1,88 @@
+# Production-like stack: the web app runs the optimised standalone build.
+# For day-to-day development, docker-compose.override.yml is merged in
+# automatically and swaps the app for a hot-reloading dev server.
+#
+# Every variable has a default, so `docker compose up` works without a .env.
+
+name: ticketing-system
+
+x-database-url: &database-url "postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-ticketing}"
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-ticketing}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: applies pending migrations, then exits. `web` waits for it.
+  migrate:
+    build:
+      context: .
+      target: dev
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment:
+      DATABASE_URL: *database-url
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  # Named `web`, not `app`: .app is an HSTS-preloaded TLD, so Chromium forces
+  # https:// on a host called `app` and the e2e suite cannot reach it.
+  web:
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Ticketing System}
+    environment:
+      DATABASE_URL: *database-url
+      APP_URL: ${APP_URL:-http://localhost:3000}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/api/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Playwright, run on demand by `make test-e2e`. Not started by `docker compose up`.
+  e2e:
+    profiles: ["e2e"]
+    build:
+      context: .
+      target: e2e
+    # Reports are copied out with `docker cp` (see `make test-e2e`) rather than
+    # bind-mounted: this container runs as root, and on Linux a mount would
+    # leave root-owned folders in your checkout.
+    environment:
+      E2E_BASE_URL: http://web:3000
+      CI: ${CI:-}
+    depends_on:
+      web:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

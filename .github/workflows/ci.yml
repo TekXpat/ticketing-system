@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Job names are the status-check names that branch protection requires.
+  checks:
+    name: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Format
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPOSE: docker compose -f docker-compose.yml
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v7
+
+      # The production-like stack: standalone build, no dev overrides.
+      - name: Start stack
+        run: $COMPOSE up --build --detach --wait
+
+      - name: Run Playwright
+        run: make test-e2e COMPOSE="$COMPOSE"
+
+      - name: Container logs
+        if: failure()
+        run: $COMPOSE logs --no-color
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Stop stack
+        if: always()
+        run: $COMPOSE --profile e2e down --volumes
