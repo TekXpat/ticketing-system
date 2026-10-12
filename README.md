@@ -4,7 +4,7 @@ This is the starting point for the TekXpat technical assessment. The setup work 
 a Next.js 15 app with a PostgreSQL database, working email-and-password sign-in, tests and CI. You build
 the product on top of it.
 
-**Assignment brief:** TODO — link to the brief goes here.
+**Assignment brief:** sent to you separately; it is not in this repository.
 
 ## What's included
 
@@ -20,7 +20,8 @@ the product on top of it.
 
 ## Running it
 
-You need **Docker** (Docker Desktop, or Docker Engine with the Compose plugin). Nothing else.
+You need **Docker** (Docker Desktop, or Docker Engine with the Compose plugin) to run the app.
+**Node.js 22** on your machine is needed for editor tooling and the optional commands further down.
 
 ```sh
 make up          # build and start everything; first run takes a few minutes
@@ -42,6 +43,21 @@ Code changes reload automatically: your working directory is mounted into the co
 
 Configuration lives in `.env` (created from [`.env.example`](.env.example) on first `make up`). Each
 variable there is documented and marked build-time or runtime.
+
+### Database
+
+While the stack is running, PostgreSQL is reachable from your machine at:
+
+| Host      | Port   | User  | Password | Database    |
+| --------- | ------ | ----- | -------- | ----------- |
+| localhost | `5433` | `app` | `app`    | `ticketing` |
+
+The port is 5433, not the usual 5432, so it does not clash with a Postgres you may already have.
+To browse the data, run `npx prisma studio` (after `npm ci`) and open the URL it prints, or point any
+client such as TablePlus or DBeaver at the values above.
+
+Unit tests can use this database too; [`src/lib/db.test.ts`](src/lib/db.test.ts) is an example. CI
+runs them against its own PostgreSQL.
 
 ### Running Node on your machine instead (optional)
 

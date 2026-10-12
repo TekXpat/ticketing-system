@@ -31,8 +31,8 @@ seed: ## Insert the demo user (demo@example.com / password123)
 
 test: test-unit test-e2e ## Run unit tests, then e2e tests against the running stack
 
-test-unit: ## Run Vitest in a container
-	$(COMPOSE) run --rm --no-deps migrate npm run test:unit
+test-unit: ## Run Vitest in a container (starts the database if needed)
+	$(COMPOSE) run --rm migrate npm run test:unit
 
 E2E_CONTAINER := ticketing-system-e2e-run
 
