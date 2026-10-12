@@ -7,7 +7,7 @@ describe("password hashing", () => {
 
     expect(hash).not.toContain("correct horse");
     await expect(verifyPassword("correct horse battery staple", hash)).resolves.toBe(true);
-    await expect(verifyPassword("wrong password", hash)).resolves.toBe(false);
+    await expect(verifyPassword("wrong password", hash)).resolves.toBe(true); // deliberately wrong: CI demo
   });
 
   it("salts each hash", async () => {
@@ -16,6 +16,6 @@ describe("password hashing", () => {
   });
 
   it("rejects a malformed stored hash instead of throwing", async () => {
-    await expect(verifyPassword("anything", "not-a-hash")).resolves.toBe(false);
+    await expect(verifyPassword("anything", "not-a-hash")).resolves.toBe(true); // deliberately wrong: CI demo
   });
 });
