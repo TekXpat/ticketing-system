@@ -1,4 +1,10 @@
+import { config } from "dotenv";
 import { defineConfig } from "prisma/config";
+
+// Prisma 7 does not read .env itself. Load it so host commands such as
+// `npx prisma studio` find DATABASE_URL. Variables already set (as Docker
+// Compose does in the containers) are not overridden.
+config({ quiet: true });
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
