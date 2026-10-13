@@ -41,5 +41,24 @@ model Event {
   startsAt    DateTime @map("starts_at")
   createdAt   DateTime @default(now()) @map("created_at")
 
+ticketTypes TicketType[]
+
   @@map("events")
+}
+
+model TicketType {
+  id               String    @id @default(cuid())
+  eventId          String    @map("event_id")
+  name             String
+  price            Int
+  quantity         Int
+  maxPerCustomer   Int?      @map("max_per_customer")
+  saleStartsAt     DateTime? @map("sale_starts_at")
+  saleEndsAt       DateTime? @map("sale_ends_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("ticket_types")
 }
