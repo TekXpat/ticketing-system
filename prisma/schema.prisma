@@ -31,3 +31,15 @@ model Session {
   @@index([userId])
   @@map("sessions")
 }
+
+model Event {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  kind        String
+  location    String?
+  startsAt    DateTime @map("starts_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("events")
+}
