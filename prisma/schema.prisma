@@ -41,7 +41,9 @@ model Event {
   startsAt    DateTime @map("starts_at")
   createdAt   DateTime @default(now()) @map("created_at")
 
-ticketTypes TicketType[]
+  seatLayoutId String?     @map("seat_layout_id")
+  seatLayout   SeatLayout? @relation(fields: [seatLayoutId], references: [id])
+  ticketTypes TicketType[]
 
   @@map("events")
 }
@@ -55,10 +57,38 @@ model TicketType {
   maxPerCustomer   Int?      @map("max_per_customer")
   saleStartsAt     DateTime? @map("sale_starts_at")
   saleEndsAt       DateTime? @map("sale_ends_at")
+  seated         Boolean   @default(false)
+  section        String?
   createdAt        DateTime  @default(now()) @map("created_at")
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@index([eventId])
   @@map("ticket_types")
+}
+
+model SeatLayout {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  seats  Seat[]
+  events Event[]
+
+  @@map("seat_layouts")
+}
+
+model Seat {
+  id       String @id @default(cuid())
+  layoutId String @map("layout_id")
+  label    String
+  section  String @default("main")
+  rowIndex Int    @map("row_index")
+  colIndex Int    @map("col_index")
+
+  layout SeatLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
+
+  @@unique([layoutId, label])
+  @@index([layoutId])
+  @@map("seats")
 }
