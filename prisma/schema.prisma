@@ -16,6 +16,8 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   sessions     Session[]
 
+    seatReservations SeatReservation[]
+
   @@map("users")
 }
 
@@ -44,6 +46,7 @@ model Event {
   seatLayoutId String?     @map("seat_layout_id")
   seatLayout   SeatLayout? @relation(fields: [seatLayoutId], references: [id])
   ticketTypes TicketType[]
+    seatReservations SeatReservation[]
 
   @@map("events")
 }
@@ -88,7 +91,33 @@ model Seat {
 
   layout SeatLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
 
+    reservations SeatReservation[]
+
   @@unique([layoutId, label])
   @@index([layoutId])
   @@map("seats")
+}
+
+enum SeatStatus {
+  HELD
+  SOLD
+}
+
+model SeatReservation {
+  id        String     @id @default(cuid())
+  eventId   String     @map("event_id")
+  seatId    String     @map("seat_id")
+  userId    String     @map("user_id")
+  status    SeatStatus @default(HELD)
+  expiresAt DateTime   @map("expires_at")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  seat  Seat  @relation(fields: [seatId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, seatId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("seat_reservations")
 }
