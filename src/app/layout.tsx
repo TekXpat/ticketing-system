@@ -19,8 +19,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {APP_NAME}
             </Link>
             <div className="flex items-center gap-4 text-sm">
+              <Link href="/events">Events</Link>
               {user ? (
                 <>
+                  <Link href="/events/new">Create event</Link>
                   <Link href="/account">Account</Link>
                   <form action={signOut}>
                     <button type="submit" className="text-gray-600 hover:text-gray-900">
