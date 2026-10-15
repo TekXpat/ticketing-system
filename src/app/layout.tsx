@@ -19,6 +19,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {APP_NAME}
             </Link>
             <div className="flex items-center gap-4 text-sm">
+              docker comp
               {user ? (
                 <>
                   <Link href="/account">Account</Link>

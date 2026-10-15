@@ -13,6 +13,9 @@ export default async function EventsPage() {
   return (
     <section className="space-y-6">
       <h1 className="text-2xl font-bold">Events</h1>
+      <a href="/events/new" className="inline-block text-blue-700 underline">
+        Create an event{" "}
+      </a>
       {events.length === 0 ? (
         <p className="text-gray-600">No events yet.</p>
       ) : (
