@@ -7,14 +7,14 @@ export const dynamic = "force-dynamic";
 export default async function EventsPage() {
   const events = await db.event.findMany({
     orderBy: { startsAt: "asc" },
-    include: { _count: { select: { ticketTypes: true } } },
+    include: { ticketTypes: { orderBy: { price: "asc" } } },
   });
 
   return (
     <section className="space-y-6">
-      <h1 className="text-2xl font-bold">Events</h1>
+      <h1 className="text-2xl font-bold">Ticket</h1>
       <a href="/events/new" className="inline-block text-blue-700 underline">
-        Create an event{" "}
+        Create a Ticket{" "}
       </a>
       {events.length === 0 ? (
         <p className="text-gray-600">No events yet.</p>
@@ -30,7 +30,14 @@ export default async function EventsPage() {
               <p className="text-sm text-gray-500">
                 {event.startsAt.toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short" })}
               </p>
-              <p className="text-sm text-gray-500">{event._count.ticketTypes} ticket type(s)</p>
+              <ul className="mt-2 space-y-1 text-sm text-gray-700">
+                {event.ticketTypes.map((ticketType) => (
+                  <li key={ticketType.id}>
+                    {ticketType.name} · {ticketType.price.toLocaleString("en-GB")} ·{" "}
+                    {ticketType.quantity} tickets
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>
