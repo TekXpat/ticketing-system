@@ -10,4 +10,5 @@ export const createEventSchema = z.object({
   price: z.coerce.number().int().min(0, { error: "Price cannot be negative." }),
   quantity: z.coerce.number().int().min(1, { error: "Enter at least 1 ticket." }),
   maxPerCustomer: z.coerce.number().int().min(1).optional(),
+  seatLayoutId: z.string().trim().min(1).optional(),
 });

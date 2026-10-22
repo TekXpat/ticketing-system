@@ -20,11 +20,39 @@ async function main() {
     },
   });
   console.log(`Seeded ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
+  // Demo bus layout: 5 rows x 4 seats, reused by every bus journey.
+  const BUS_LAYOUT_NAME = "Demo bus (20 seats)";
+  const existingBus = await prisma.seatLayout.findFirst({
+    where: { name: BUS_LAYOUT_NAME },
+  });
+
+  if (existingBus) {
+    console.log(`Layout "${BUS_LAYOUT_NAME}" already exists, skipping`);
+  } else {
+    const letters = ["A", "B", "C", "D"];
+    const seats: { label: string; rowIndex: number; colIndex: number }[] = [];
+
+    for (let row = 1; row <= 5; row++) {
+      for (let col = 0; col < letters.length; col++) {
+        seats.push({
+          label: `${row}${letters[col]}`,
+          rowIndex: row - 1,
+          colIndex: col,
+        });
+      }
+    }
+
+    await prisma.seatLayout.create({
+      data: { name: BUS_LAYOUT_NAME, seats: { create: seats } },
+    });
+    console.log(`Created layout "${BUS_LAYOUT_NAME}" with ${seats.length} seats`);
+  }
 }
 
 main()
   .catch((error) => {
     console.error(error);
+
     process.exitCode = 1;
   })
   .finally(() => prisma.$disconnect());
