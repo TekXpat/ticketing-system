@@ -19,7 +19,7 @@ export async function createEvent(
 
   const raw = Object.fromEntries(formData);
   // An empty box arrives as "", so treat it as "not given".
-  for (const key of ["location", "maxPerCustomer"]) {
+  for (const key of ["location", "maxPerCustomer", "seatLayoutId"]) {
     if (raw[key] === "") delete raw[key];
   }
 
@@ -28,8 +28,17 @@ export async function createEvent(
     return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   }
 
-  const { title, kind, location, startsAt, ticketName, price, quantity, maxPerCustomer } =
-    parsed.data;
+  const {
+    title,
+    kind,
+    location,
+    startsAt,
+    ticketName,
+    price,
+    quantity,
+    maxPerCustomer,
+    seatLayoutId,
+  } = parsed.data;
 
   await db.event.create({
     data: {
@@ -37,8 +46,15 @@ export async function createEvent(
       kind,
       location,
       startsAt,
+      seatLayoutId,
       ticketTypes: {
-        create: { name: ticketName, price, quantity, maxPerCustomer },
+        create: {
+          name: ticketName,
+          price,
+          quantity,
+          maxPerCustomer,
+          seated: Boolean(seatLayoutId),
+        },
       },
     },
   });

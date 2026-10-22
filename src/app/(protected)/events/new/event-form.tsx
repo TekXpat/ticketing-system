@@ -10,7 +10,7 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="text-sm text-red-600">{messages[0]}</p>;
 }
 
-export default function NewEventPage() {
+export default function EventForm({ layouts }: { layouts: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(createEvent, initialState);
   const errors = state.fieldErrors ?? {};
   const inputClass = "w-full rounded border border-gray-300 px-3 py-2";
@@ -46,7 +46,19 @@ export default function NewEventPage() {
           <input id="startsAt" name="startsAt" type="datetime-local" className={inputClass} />
           <FieldError messages={errors.startsAt} />
         </div>
-
+        <div>
+          <label htmlFor="seatLayoutId" className="block text-sm font-medium">
+            Seat layout (leave empty for no seats)
+          </label>
+          <select id="seatLayoutId" name="seatLayoutId" className={inputClass} defaultValue="">
+            <option value="">No seats (general admission)</option>
+            {layouts.map((layout) => (
+              <option key={layout.id} value={layout.id}>
+                {layout.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <h2 className="pt-2 text-lg font-semibold">First ticket type</h2>
         <div>
           <label htmlFor="ticketName" className="block text-sm font-medium">
