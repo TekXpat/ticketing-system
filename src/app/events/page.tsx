@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 
 // Events change often, so build this page fresh on every visit.
@@ -13,9 +14,9 @@ export default async function EventsPage() {
   return (
     <section className="space-y-6">
       <h1 className="text-2xl font-bold">Ticket</h1>
-      <a href="/events/new" className="inline-block text-blue-700 underline">
-        Create a Ticket{" "}
-      </a>
+      <Link href="/events/new" className="inline-block text-blue-700 underline">
+        Create a Ticket
+      </Link>
       {events.length === 0 ? (
         <p className="text-gray-600">No events yet.</p>
       ) : (
@@ -38,6 +39,14 @@ export default async function EventsPage() {
                   </li>
                 ))}
               </ul>
+              {event.seatLayoutId ? (
+                <Link
+                  href={`/events/${event.id}`}
+                  className="mt-2 inline-block text-blue-700 underline"
+                >
+                  Choose seats
+                </Link>
+              ) : null}
             </li>
           ))}
         </ul>
