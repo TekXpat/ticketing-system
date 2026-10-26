@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
+import { expireOverdueOrders } from "@/lib/payments/expire";
 import { SeatPicker } from "./seat-picker";
 
 // Seat availability changes every second, so build this page fresh each visit.
@@ -9,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function EventSeatsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  await expireOverdueOrders();
 
   const event = await db.event.findUnique({
     where: { id },
@@ -55,6 +58,12 @@ export default async function EventSeatsPage({ params }: { params: Promise<{ id:
         takenSeatIds={takenSeatIds}
         mySeatIds={mySeatIds}
       />
+      <Link
+        href={`/events/${event.id}/checkout`}
+        className="inline-block rounded bg-blue-700 px-4 py-2 text-white"
+      >
+        Checkout
+      </Link>
     </section>
   );
 }
