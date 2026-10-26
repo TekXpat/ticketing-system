@@ -68,7 +68,8 @@ describe("settlePayment", () => {
   });
 
   // Deleting an event also deletes its orders, payments, tickets and holds.
-  const cleanUp = () => db.order.deleteMany({ where: { eventId: { in: [gaEventId, busEventId] } } });
+  const cleanUp = () =>
+    db.order.deleteMany({ where: { eventId: { in: [gaEventId, busEventId] } } });
 
   afterEach(async () => {
     await cleanUp();
@@ -124,7 +125,9 @@ describe("settlePayment", () => {
 
     await settlePayment(providerRef, "success");
 
-    const reservation = await db.seatReservation.findFirst({ where: { eventId: busEventId, seatId } });
+    const reservation = await db.seatReservation.findFirst({
+      where: { eventId: busEventId, seatId },
+    });
     expect(reservation?.status).toBe("SOLD");
     const ticket = await db.ticket.findFirst({ where: { eventId: busEventId } });
     expect(ticket?.seatId).toBe(seatId);
@@ -154,7 +157,10 @@ describe("settlePayment", () => {
 
   it("expires an order whose callback never arrived and frees its seat", async () => {
     const { providerRef, orderId } = await seatPayment(userAId);
-    await db.order.update({ where: { id: orderId }, data: { expiresAt: new Date(Date.now() - 60_000) } });
+    await db.order.update({
+      where: { id: orderId },
+      data: { expiresAt: new Date(Date.now() - 60_000) },
+    });
 
     const swept = await expireOverdueOrders();
 
