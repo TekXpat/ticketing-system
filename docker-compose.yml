@@ -50,6 +50,7 @@ services:
       DATABASE_URL: *database-url
       APP_URL: ${APP_URL:-http://localhost:3000}
       PAYMENT_CALLBACK_SECRET: ${PAYMENT_CALLBACK_SECRET:-dev-callback-secret}
+      TICKET_SIGNING_SECRET: ${TICKET_SIGNING_SECRET:-dev-ticket-signing-secret}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
