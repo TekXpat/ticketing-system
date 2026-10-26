@@ -16,7 +16,8 @@ model User {
   updatedAt    DateTime  @updatedAt @map("updated_at")
   sessions     Session[]
 
-    seatReservations SeatReservation[]
+  seatReservations SeatReservation[]
+  orders           Order[]
 
   @@map("users")
 }
@@ -43,28 +44,31 @@ model Event {
   startsAt    DateTime @map("starts_at")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  seatLayoutId String?     @map("seat_layout_id")
-  seatLayout   SeatLayout? @relation(fields: [seatLayoutId], references: [id])
-  ticketTypes TicketType[]
-    seatReservations SeatReservation[]
+  seatLayoutId String?      @map("seat_layout_id")
+  seatLayout   SeatLayout?  @relation(fields: [seatLayoutId], references: [id])
+  ticketTypes  TicketType[]
+
+  seatReservations SeatReservation[]
+  orders           Order[]
 
   @@map("events")
 }
 
 model TicketType {
-  id               String    @id @default(cuid())
-  eventId          String    @map("event_id")
-  name             String
-  price            Int
-  quantity         Int
-  maxPerCustomer   Int?      @map("max_per_customer")
-  saleStartsAt     DateTime? @map("sale_starts_at")
-  saleEndsAt       DateTime? @map("sale_ends_at")
+  id             String    @id @default(cuid())
+  eventId        String    @map("event_id")
+  name           String
+  price          Int
+  quantity       Int
+  maxPerCustomer Int?      @map("max_per_customer")
+  saleStartsAt   DateTime? @map("sale_starts_at")
+  saleEndsAt     DateTime? @map("sale_ends_at")
   seated         Boolean   @default(false)
   section        String?
-  createdAt        DateTime  @default(now()) @map("created_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
 
   @@index([eventId])
   @@map("ticket_types")
@@ -91,7 +95,8 @@ model Seat {
 
   layout SeatLayout @relation(fields: [layoutId], references: [id], onDelete: Cascade)
 
-    reservations SeatReservation[]
+  reservations SeatReservation[]
+  orderItems   OrderItem[]
 
   @@unique([layoutId, label])
   @@index([layoutId])
@@ -120,4 +125,68 @@ model SeatReservation {
   @@index([eventId])
   @@index([userId])
   @@map("seat_reservations")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  TIMED_OUT
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String      @map("user_id")
+  eventId   String      @map("event_id")
+  status    OrderStatus @default(PENDING)
+  expiresAt DateTime    @map("expires_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items   OrderItem[]
+  payment Payment?
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status, expiresAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String  @id @default(cuid())
+  orderId      String  @map("order_id")
+  ticketTypeId String  @map("ticket_type_id")
+  seatId       String? @map("seat_id")
+  price        Int
+
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+  seat       Seat?      @relation(fields: [seatId], references: [id])
+
+  @@unique([orderId, seatId])
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId     String        @unique @map("order_id")
+  providerRef String        @unique @map("provider_ref")
+  phone       String
+  amount      Int
+  status      PaymentStatus @default(PENDING)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  completedAt DateTime?     @map("completed_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
 }
