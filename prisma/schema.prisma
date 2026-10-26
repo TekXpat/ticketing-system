@@ -50,6 +50,7 @@ model Event {
 
   seatReservations SeatReservation[]
   orders           Order[]
+  tickets          Ticket[]
 
   @@map("events")
 }
@@ -69,6 +70,7 @@ model TicketType {
 
   event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
   orderItems OrderItem[]
+  tickets    Ticket[]
 
   @@index([eventId])
   @@map("ticket_types")
@@ -97,6 +99,7 @@ model Seat {
 
   reservations SeatReservation[]
   orderItems   OrderItem[]
+  tickets      Ticket[]
 
   @@unique([layoutId, label])
   @@index([layoutId])
@@ -170,6 +173,7 @@ model OrderItem {
   order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
   seat       Seat?      @relation(fields: [seatId], references: [id])
+  ticket     Ticket?
 
   @@unique([orderId, seatId])
   @@index([orderId])
@@ -189,4 +193,22 @@ model Payment {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("payments")
+}
+
+model Ticket {
+  id           String    @id @default(cuid())
+  orderItemId  String    @unique @map("order_item_id")
+  eventId      String    @map("event_id")
+  ticketTypeId String    @map("ticket_type_id")
+  seatId       String?   @map("seat_id")
+  usedAt       DateTime? @map("used_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  orderItem  OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
+  seat       Seat?      @relation(fields: [seatId], references: [id])
+
+  @@index([eventId])
+  @@map("tickets")
 }
