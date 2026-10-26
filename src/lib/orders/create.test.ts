@@ -23,9 +23,13 @@ describe("createOrderForUser", () => {
 
   beforeAll(async () => {
     const makeUser = (name: string) =>
-      db.user.create({ data: { email: `order-${name}-${tag}@example.com`, passwordHash: "unused" } });
+      db.user.create({
+        data: { email: `order-${name}-${tag}@example.com`, passwordHash: "unused" },
+      });
 
-    const buyers = await Promise.all(Array.from({ length: BUYERS }, (_, i) => makeUser(`buyer${i}`)));
+    const buyers = await Promise.all(
+      Array.from({ length: BUYERS }, (_, i) => makeUser(`buyer${i}`)),
+    );
     buyerIds = buyers.map((user) => user.id);
     userAId = (await makeUser("a")).id;
     userBId = (await makeUser("b")).id;
@@ -130,7 +134,9 @@ describe("createOrderForUser", () => {
     expect(stranger.ok).toBe(false);
     expect(holder.ok).toBe(true);
     if (!holder.ok) return;
-    const reservation = await db.seatReservation.findFirst({ where: { eventId: busEventId, seatId } });
+    const reservation = await db.seatReservation.findFirst({
+      where: { eventId: busEventId, seatId },
+    });
     expect(reservation?.expiresAt.getTime()).toBe(holder.expiresAt.getTime());
   });
 });
