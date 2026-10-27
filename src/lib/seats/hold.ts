@@ -6,6 +6,8 @@ const HOLD_MINUTES = 10;
 export type HoldSeatResult =
   { ok: true; reservationId: string; expiresAt: Date } | { ok: false; error: string };
 
+export type ReleaseSeatResult = { ok: true } | { ok: false; error: string };
+
 export async function holdSeatForUser(
   userId: string,
   eventId: string,
@@ -51,4 +53,45 @@ export async function holdSeatForUser(
     }
     throw error;
   }
+}
+
+// Seats that belong to this user's unpaid orders. Releasing those would leave
+// the order without its seat, so they are cancelled through the order instead.
+async function seatsInPendingOrders(userId: string, eventId: string): Promise<string[]> {
+  const items = await db.orderItem.findMany({
+    where: { seatId: { not: null }, order: { userId, eventId, status: "PENDING" } },
+    select: { seatId: true },
+  });
+  return items.flatMap((item) => (item.seatId ? [item.seatId] : []));
+}
+
+// Gives back one seat the user is holding. Only HELD rows of this user are touched.
+export async function releaseSeatForUser(
+  userId: string,
+  eventId: string,
+  seatId: string,
+): Promise<ReleaseSeatResult> {
+  const locked = await seatsInPendingOrders(userId, eventId);
+  if (locked.includes(seatId)) {
+    return { ok: false, error: "This seat is in an unpaid order. Cancel the order instead." };
+  }
+  await db.seatReservation.deleteMany({
+    where: { eventId, seatId, userId, status: "HELD" },
+  });
+  return { ok: true };
+}
+
+// Gives back every seat the user holds for this event, except those in an
+// unpaid order. Returns the ids that were released.
+export async function releaseAllHeldSeatsForUser(
+  userId: string,
+  eventId: string,
+): Promise<string[]> {
+  const locked = await seatsInPendingOrders(userId, eventId);
+  const holds = await db.seatReservation.findMany({
+    where: { eventId, userId, status: "HELD", seatId: { notIn: locked } },
+    select: { id: true, seatId: true },
+  });
+  await db.seatReservation.deleteMany({ where: { id: { in: holds.map((hold) => hold.id) } } });
+  return holds.map((hold) => hold.seatId);
 }
