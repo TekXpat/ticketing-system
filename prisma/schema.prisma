@@ -7,11 +7,17 @@ datasource db {
   provider = "postgresql"
 }
 
+enum Role {
+  CUSTOMER
+  ORGANISER
+}
+
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
   name         String?
   passwordHash String    @map("password_hash")
+  role         Role      @default(CUSTOMER)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   sessions     Session[]
