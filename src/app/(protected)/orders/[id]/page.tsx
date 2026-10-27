@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { cancelOrder } from "@/lib/orders/cancel";
 import { expireOverdueOrders } from "@/lib/payments/expire";
 import { Simulator } from "./simulator";
 
@@ -44,8 +46,21 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             seats are released.
           </p>
           <Simulator orderId={order.id} />
+          <form action={cancelOrder}>
+            <input type="hidden" name="orderId" value={order.id} />
+            <button
+              type="submit"
+              className="rounded border border-red-600 px-3 py-2 text-sm text-red-700"
+            >
+              Cancel this order
+            </button>
+          </form>
         </>
-      ) : null}
+      ) : (
+        <Link href={`/events/${order.eventId}`} className="text-sm text-blue-700 underline">
+          ← Back to the event
+        </Link>
+      )}
     </section>
   );
 }

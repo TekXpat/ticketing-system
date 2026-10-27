@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { expireOverdueOrders } from "@/lib/payments/expire";
+import { cancelHolds } from "@/lib/seats/actions";
 import { CheckoutForm } from "./checkout-form";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,9 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
 
   return (
     <section className="space-y-6">
+      <Link href={`/events/${id}`} className="text-sm text-blue-700 underline">
+        ← Back to seats
+      </Link>
       <h1 className="text-2xl font-bold">Checkout: {event.title}</h1>
       {holds.length === 0 || !ticketType ? (
         <p className="text-gray-600">
@@ -48,6 +52,15 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
             Total: {(ticketType.price * holds.length).toLocaleString("en-GB")}
           </p>
           <CheckoutForm eventId={id} />
+          <form action={cancelHolds}>
+            <input type="hidden" name="eventId" value={id} />
+            <button
+              type="submit"
+              className="rounded border border-red-600 px-3 py-2 text-sm text-red-700"
+            >
+              Cancel and release my seats
+            </button>
+          </form>
         </>
       )}
     </section>
