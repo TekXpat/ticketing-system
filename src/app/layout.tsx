@@ -22,7 +22,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/events">Tickets</Link>
               {user ? (
                 <>
-                  <Link href="/events/new">Create a ticket</Link>
+                  {user.role === "ORGANISER" ? (
+                    <Link href="/events/new">Create a ticket</Link>
+                  ) : null}
                   <Link href="/account">Account</Link>
                   <form action={signOut}>
                     <button type="submit" className="text-gray-600 hover:text-gray-900">

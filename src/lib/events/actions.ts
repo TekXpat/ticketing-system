@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth/session";
+import { requireOrganiser } from "@/lib/auth/session";
 import { createEventSchema } from "./schemas";
 
 export type CreateEventState = {
@@ -14,8 +14,9 @@ export async function createEvent(
   _prev: CreateEventState,
   formData: FormData,
 ): Promise<CreateEventState> {
-  // Only a signed-in user may create events.
-  await requireUser();
+  // Only an organiser may create events. This check is the authoritative one:
+  // hiding the link in the header is a convenience, not security.
+  await requireOrganiser();
 
   const raw = Object.fromEntries(formData);
   // An empty box arrives as "", so treat it as "not given".
