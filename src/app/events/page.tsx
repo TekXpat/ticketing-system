@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { ticketsLeftByType } from "@/lib/events/availability";
 
 // Events change often, so build this page fresh on every visit.
 export const dynamic = "force-dynamic";
@@ -8,15 +9,13 @@ export const dynamic = "force-dynamic";
 export default async function EventsPage() {
   const events = await db.event.findMany({
     orderBy: { startsAt: "asc" },
-    include: { ticketTypes: { orderBy: { price: "asc" } } },
+    include: { ticketTypes: { orderBy: { price: "desc" } } },
   });
+  const left = await ticketsLeftByType(events.flatMap((event) => event.ticketTypes));
 
   return (
     <section className="space-y-6">
       <h1 className="text-2xl font-bold">Ticket</h1>
-      <Link href="/events/new" className="inline-block text-blue-700 underline">
-        Create a Ticket
-      </Link>
       {events.length === 0 ? (
         <p className="text-gray-600">No events yet.</p>
       ) : (
@@ -32,12 +31,19 @@ export default async function EventsPage() {
                 {event.startsAt.toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short" })}
               </p>
               <ul className="mt-2 space-y-1 text-sm text-gray-700">
-                {event.ticketTypes.map((ticketType) => (
-                  <li key={ticketType.id}>
-                    {ticketType.name} · {ticketType.price.toLocaleString("en-GB")} ·{" "}
-                    {ticketType.quantity} tickets
-                  </li>
-                ))}
+                {event.ticketTypes.map((ticketType) => {
+                  const remaining = left.get(ticketType.id) ?? 0;
+                  return (
+                    <li key={ticketType.id}>
+                      {ticketType.name} · {ticketType.price.toLocaleString("en-GB")} ·{" "}
+                      {remaining === 0 ? (
+                        <span className="font-medium text-red-700">Sold out</span>
+                      ) : (
+                        <span>{remaining.toLocaleString("en-GB")} left</span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
               {event.seatLayoutId ? (
                 <Link
