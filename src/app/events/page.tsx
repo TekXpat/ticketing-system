@@ -45,14 +45,12 @@ export default async function EventsPage() {
                   );
                 })}
               </ul>
-              {event.seatLayoutId ? (
-                <Link
-                  href={`/events/${event.id}`}
-                  className="mt-2 inline-block text-blue-700 underline"
-                >
-                  Choose seats
-                </Link>
-              ) : null}
+              <Link
+                href={`/events/${event.id}`}
+                className="mt-2 inline-block text-blue-700 underline"
+              >
+                {event.seatLayoutId ? "Choose seats" : "Buy tickets"}
+              </Link>
             </li>
           ))}
         </ul>
