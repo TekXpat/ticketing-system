@@ -1,13 +1,30 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { ticketsLeftByType } from "@/lib/events/availability";
+import { EVENT_KINDS } from "@/lib/events/schemas";
 
 // Events change often, so build this page fresh on every visit.
 export const dynamic = "force-dynamic";
 
+const FILTERS = [
+  { value: "all", label: "All" },
+  { value: "bus", label: "Buses" },
+  { value: "concert", label: "Concerts" },
+  { value: "conference", label: "Conferences" },
+] as const;
+
 // Public page: anyone can see the list of events.
-export default async function EventsPage() {
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ kind?: string }>;
+}) {
+  const { kind } = await searchParams;
+  // Anything that is not one of the three kinds means "All".
+  const active = EVENT_KINDS.find((item) => item === kind);
+
   const events = await db.event.findMany({
+    where: active ? { kind: active } : undefined,
     orderBy: { startsAt: "asc" },
     include: { ticketTypes: { orderBy: { price: "desc" } } },
   });
@@ -16,8 +33,29 @@ export default async function EventsPage() {
   return (
     <section className="space-y-6">
       <h1 className="text-2xl font-bold">Ticket</h1>
+
+      <nav aria-label="Filter by kind" className="flex flex-wrap gap-2">
+        {FILTERS.map((filter) => {
+          const selected = (active ?? "all") === filter.value;
+          return (
+            <Link
+              key={filter.value}
+              href={filter.value === "all" ? "/events" : `/events?kind=${filter.value}`}
+              aria-current={selected ? "page" : undefined}
+              className={`rounded-full border px-3 py-1 text-sm ${
+                selected
+                  ? "border-gray-900 bg-gray-900 text-white"
+                  : "border-gray-400 bg-white text-gray-800"
+              }`}
+            >
+              {filter.label}
+            </Link>
+          );
+        })}
+      </nav>
+
       {events.length === 0 ? (
-        <p className="text-gray-600">No events yet.</p>
+        <p className="text-gray-600">No events here yet.</p>
       ) : (
         <ul className="space-y-3">
           {events.map((event) => (
