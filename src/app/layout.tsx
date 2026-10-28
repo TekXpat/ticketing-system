@@ -22,8 +22,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/events">Tickets</Link>
               {user ? (
                 <>
+                  <Link href="/tickets">My tickets</Link>
                   {user.role === "ORGANISER" ? (
-                    <Link href="/events/new">Create a ticket</Link>
+                    <>
+                      <Link href="/events/new">Create a ticket</Link>
+                      <Link href="/gate">Gate</Link>
+                    </>
                   ) : null}
                   <Link href="/account">Account</Link>
                   <form action={signOut}>
