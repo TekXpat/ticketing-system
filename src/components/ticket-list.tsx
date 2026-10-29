@@ -3,15 +3,22 @@ import type { MyTicket } from "@/lib/tickets/mine";
 
 export function TicketList({ tickets }: { tickets: MyTicket[] }) {
   if (tickets.length === 0) {
-    return <p className="text-gray-600">You have no tickets yet.</p>;
+    return <p className="text-muted">You have no tickets yet.</p>;
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="grid gap-4 md:grid-cols-2">
       {tickets.map((ticket) => (
-        <li key={ticket.id} className="space-y-1 rounded border border-gray-300 p-4">
-          <p className="font-semibold">{ticket.event.title}</p>
-          <p className="text-sm text-gray-600">
+        <li key={ticket.id} className="card space-y-2">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <p className="text-lg font-semibold">{ticket.event.title}</p>
+            {ticket.usedAt ? (
+              <span className="badge badge-amber">Used</span>
+            ) : (
+              <span className="badge badge-green">Not used yet</span>
+            )}
+          </div>
+          <p className="text-muted text-sm">
             {ticket.ticketType.name}
             {ticket.seat ? ` · seat ${ticket.seat.label}` : ""} ·{" "}
             {ticket.event.startsAt.toLocaleString("en-GB", {
@@ -19,13 +26,12 @@ export function TicketList({ tickets }: { tickets: MyTicket[] }) {
               timeStyle: "short",
             })}
           </p>
-          <p className="text-sm font-medium">{ticket.usedAt ? "Used" : "Not used yet"}</p>
-          <p className="rounded bg-gray-100 p-2 font-mono text-xs break-all">
+          <p className="bg-surface-2 rounded-lg p-2 font-mono text-xs break-all">
             {createTicketCode(ticket)}
           </p>
           <a
             href={`/api/tickets/${ticket.id}/download`}
-            className="inline-block text-sm text-blue-700 underline"
+            className="text-brand-soft inline-block text-sm font-medium underline"
           >
             Download ticket
           </a>

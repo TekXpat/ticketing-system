@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { APP_NAME } from "@/lib/config";
 import { getCurrentUser } from "@/lib/auth/session";
-import { signOut } from "@/lib/auth/actions";
 import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
@@ -41,9 +40,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </Link>
               {user ? (
                 <>
-                  <Link href="/tickets" className="nav-link">
-                    My tickets
-                  </Link>
                   {user.role === "ORGANISER" ? (
                     <Link href="/gate" className="nav-link">
                       Gate
@@ -52,11 +48,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <Link href="/account" className="nav-link">
                     Account
                   </Link>
-                  <form action={signOut}>
-                    <button type="submit" className="btn btn-outline btn-small">
-                      Sign out
-                    </button>
-                  </form>
                 </>
               ) : (
                 <>
