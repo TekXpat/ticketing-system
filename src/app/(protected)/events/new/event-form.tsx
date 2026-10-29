@@ -23,7 +23,7 @@ function FieldError({ messages }: { messages?: string[] }) {
   const unique = [...new Set(messages ?? [])];
   if (unique.length === 0) return null;
   return (
-    <div role="alert" className="space-y-1 text-sm text-red-600">
+    <div role="alert" className="text-danger space-y-1 text-sm">
       {unique.map((message) => (
         <p key={message}>{message}</p>
       ))}
@@ -51,8 +51,7 @@ export default function EventForm() {
     : rows.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
   const left = capacityNumber - allocated;
 
-  const inputClass = "w-full rounded border border-gray-300 px-3 py-2";
-  const smallButton = "rounded border border-gray-400 px-2 py-1 text-xs disabled:opacity-40";
+  const smallButton = "btn btn-outline btn-small";
 
   function changeKind(next: Kind) {
     setKind(next);
@@ -85,10 +84,10 @@ export default function EventForm() {
   );
 
   return (
-    <section className="max-w-md space-y-6">
-      <h1 className="text-2xl font-bold">Create an event</h1>
-      <form action={formAction} className="space-y-4">
-        <div>
+    <section className="mx-auto max-w-xl space-y-6">
+      <h1 className="text-3xl font-bold">Create an event</h1>
+      <form action={formAction} className="card space-y-4">
+        <div className="space-y-1">
           <label htmlFor="title" className="block text-sm font-medium">
             Title
           </label>
@@ -97,12 +96,12 @@ export default function EventForm() {
             name="title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            className={inputClass}
+            className="input"
           />
           <FieldError messages={errors.title} />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <label htmlFor="kind" className="block text-sm font-medium">
             Kind
           </label>
@@ -111,7 +110,7 @@ export default function EventForm() {
             name="kind"
             value={kind}
             onChange={(event) => changeKind(event.target.value as Kind)}
-            className={inputClass}
+            className="input"
           >
             {KINDS.map((item) => (
               <option key={item.value} value={item.value}>
@@ -122,7 +121,7 @@ export default function EventForm() {
           <FieldError messages={errors.kind} />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <label htmlFor="location" className="block text-sm font-medium">
             Location (optional)
           </label>
@@ -131,11 +130,11 @@ export default function EventForm() {
             name="location"
             value={location}
             onChange={(event) => setLocation(event.target.value)}
-            className={inputClass}
+            className="input"
           />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <label htmlFor="startsAt" className="block text-sm font-medium">
             Starts at
           </label>
@@ -145,12 +144,12 @@ export default function EventForm() {
             type="datetime-local"
             value={startsAt}
             onChange={(event) => setStartsAt(event.target.value)}
-            className={inputClass}
+            className="input"
           />
           <FieldError messages={errors.startsAt} />
         </div>
 
-        <div>
+        <div className="space-y-1">
           <label htmlFor="capacity" className="block text-sm font-medium">
             {isBus ? "Number of seats" : "Total capacity (people)"}
           </label>
@@ -161,7 +160,7 @@ export default function EventForm() {
             min="1"
             value={capacity}
             onChange={(event) => setCapacity(event.target.value)}
-            className={inputClass}
+            className="input"
           />
           <div className="mt-1 flex flex-wrap gap-2">
             {PRESETS[kind].map((preset) => (
@@ -178,18 +177,23 @@ export default function EventForm() {
           <FieldError messages={errors.capacity} />
         </div>
 
-        <h2 className="pt-2 text-lg font-semibold">{isBus ? "Ticket" : "Ticket types"}</h2>
-        <p className={`text-sm font-medium ${left < 0 ? "text-red-600" : "text-gray-700"}`}>
+        <h2 className="border-line border-t pt-4 text-xl font-semibold">
+          {isBus ? "Ticket" : "Ticket types"}
+        </h2>
+        <p className={`text-sm font-medium ${left < 0 ? "text-danger" : "text-muted"}`}>
           Capacity {capacityNumber} · allocated {allocated} ·{" "}
           {left >= 0 ? `${left} left to allocate` : `${-left} over the capacity`}
         </p>
 
         {rows.map((row, index) => (
-          <fieldset key={index} className="space-y-3 rounded border border-gray-300 p-3">
-            <legend className="px-1 text-sm font-medium">
+          <fieldset
+            key={index}
+            className="border-line bg-surface-2 space-y-3 rounded-lg border p-3"
+          >
+            <legend className="px-1 text-sm font-semibold">
               {isBus ? "Ticket" : `Ticket type ${index + 1}`}
             </legend>
-            <div>
+            <div className="space-y-1">
               <label htmlFor={`name-${index}`} className="block text-sm font-medium">
                 Name (leave empty for Regular)
               </label>
@@ -198,10 +202,10 @@ export default function EventForm() {
                 value={row.name}
                 placeholder="Regular"
                 onChange={(event) => updateRow(index, { name: event.target.value })}
-                className={inputClass}
+                className="input"
               />
             </div>
-            <div>
+            <div className="space-y-1">
               <label htmlFor={`price-${index}`} className="block text-sm font-medium">
                 Price (whole number)
               </label>
@@ -211,11 +215,11 @@ export default function EventForm() {
                 min="0"
                 value={row.price}
                 onChange={(event) => updateRow(index, { price: event.target.value })}
-                className={inputClass}
+                className="input"
               />
             </div>
             {isBus ? null : (
-              <div>
+              <div className="space-y-1">
                 <label htmlFor={`quantity-${index}`} className="block text-sm font-medium">
                   Quantity
                 </label>
@@ -225,11 +229,11 @@ export default function EventForm() {
                   min="1"
                   value={row.quantity}
                   onChange={(event) => updateRow(index, { quantity: event.target.value })}
-                  className={inputClass}
+                  className="input"
                 />
               </div>
             )}
-            <div>
+            <div className="space-y-1">
               <label htmlFor={`max-${index}`} className="block text-sm font-medium">
                 Max per customer (optional)
               </label>
@@ -239,7 +243,7 @@ export default function EventForm() {
                 min="1"
                 value={row.maxPerCustomer}
                 onChange={(event) => updateRow(index, { maxPerCustomer: event.target.value })}
-                className={inputClass}
+                className="input"
               />
             </div>
             {isBus ? null : (
@@ -253,7 +257,11 @@ export default function EventForm() {
                   Use all remaining
                 </button>
                 {rows.length > 1 ? (
-                  <button type="button" className={smallButton} onClick={() => removeRow(index)}>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-small"
+                    onClick={() => removeRow(index)}
+                  >
                     Remove
                   </button>
                 ) : null}
@@ -278,11 +286,7 @@ export default function EventForm() {
         <input type="hidden" name="ticketTypes" value={payload} />
 
         <div>
-          <button
-            type="submit"
-            disabled={pending || left < 0}
-            className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-          >
+          <button type="submit" disabled={pending || left < 0} className="btn btn-primary">
             {pending ? "Saving…" : "Create event"}
           </button>
         </div>

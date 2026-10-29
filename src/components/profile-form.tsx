@@ -51,9 +51,11 @@ export function ProfileForm({ initialName }: { initialName: string }) {
         <button type="submit" disabled={status.kind === "saving"} className="btn btn-primary">
           {status.kind === "saving" ? "Saving…" : "Save"}
         </button>
-        {status.kind === "saved" && <span className="text-sm text-green-400">Saved.</span>}
+        {status.kind === "saved" && (
+          <span className="text-success text-sm font-medium">Saved.</span>
+        )}
         {status.kind === "error" && (
-          <span role="alert" className="text-sm text-red-400">
+          <span role="alert" className="text-danger text-sm font-medium">
             {status.message}
           </span>
         )}

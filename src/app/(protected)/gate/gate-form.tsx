@@ -10,42 +10,34 @@ export function GateForm() {
   const result = state.result;
 
   return (
-    <div className="max-w-md space-y-4">
+    <div className="space-y-4">
       <form action={action} className="space-y-3">
         <label className="block text-sm font-medium">
           Ticket code
-          <input
-            name="code"
-            autoComplete="off"
-            required
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 font-mono text-sm"
-          />
+          <input name="code" autoComplete="off" required className="input mt-1 font-mono text-sm" />
         </label>
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-        >
+        <button type="submit" disabled={pending} className="btn btn-primary">
           {pending ? "Checking..." : "Check ticket"}
         </button>
       </form>
 
       {result?.status === "invalid" ? (
-        <p
+        <div
           role="status"
-          className="rounded border border-red-600 bg-red-50 p-3 font-medium text-red-800"
+          className="border-danger bg-danger-soft text-danger rounded-xl border-2 p-5"
         >
-          INVALID: this is not a genuine ticket.
-        </p>
+          <p className="text-xl font-bold">INVALID</p>
+          <p>This is not a genuine ticket.</p>
+        </div>
       ) : null}
 
       {result?.status === "valid" ? (
         <div
           role="status"
-          className="rounded border border-green-700 bg-green-50 p-3 text-green-900"
+          className="border-success bg-success-soft text-success rounded-xl border-2 p-5"
         >
-          <p className="font-medium">VALID: let them in.</p>
-          <p className="text-sm">
+          <p className="text-xl font-bold">VALID: let them in.</p>
+          <p>
             {result.event} · {result.ticketType}
             {result.seat ? ` · seat ${result.seat}` : ""}
           </p>
@@ -55,14 +47,14 @@ export function GateForm() {
       {result?.status === "already_used" ? (
         <div
           role="status"
-          className="rounded border border-amber-600 bg-amber-50 p-3 text-amber-900"
+          className="border-warning bg-warning-soft text-warning rounded-xl border-2 p-5"
         >
-          <p className="font-medium">ALREADY USED</p>
-          <p className="text-sm">
+          <p className="text-xl font-bold">ALREADY USED</p>
+          <p>
             {result.event} · {result.ticketType}
             {result.seat ? ` · seat ${result.seat}` : ""}
           </p>
-          <p className="text-sm">
+          <p>
             First scanned{" "}
             {new Date(result.usedAt).toLocaleString("en-GB", {
               dateStyle: "medium",
