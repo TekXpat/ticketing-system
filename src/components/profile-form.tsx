@@ -34,7 +34,7 @@ export function ProfileForm({ initialName }: { initialName: string }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="max-w-sm space-y-3">
+    <form onSubmit={onSubmit} className="card max-w-sm space-y-3">
       <label htmlFor="display-name" className="block text-sm font-medium">
         Display name
       </label>
@@ -45,19 +45,15 @@ export function ProfileForm({ initialName }: { initialName: string }) {
           setName(event.target.value);
           setStatus({ kind: "idle" });
         }}
-        className="w-full rounded border border-gray-300 px-3 py-2"
+        className="input"
       />
       <div className="flex items-center gap-3">
-        <button
-          type="submit"
-          disabled={status.kind === "saving"}
-          className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-        >
+        <button type="submit" disabled={status.kind === "saving"} className="btn btn-primary">
           {status.kind === "saving" ? "Saving…" : "Save"}
         </button>
-        {status.kind === "saved" && <span className="text-sm text-green-700">Saved.</span>}
+        {status.kind === "saved" && <span className="text-sm text-green-400">Saved.</span>}
         {status.kind === "error" && (
-          <span role="alert" className="text-sm text-red-600">
+          <span role="alert" className="text-sm text-red-400">
             {status.message}
           </span>
         )}
