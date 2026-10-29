@@ -73,8 +73,11 @@ export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-medium">
-        {free} of {seats.length} seats free · {mine.size} held by you
+      <p className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="badge badge-green">
+          {free} of {seats.length} seats free
+        </span>
+        <span className="badge badge-blue">{mine.size} held by you</span>
       </p>
 
       <div className="grid w-max gap-2" style={{ gridTemplateColumns: `repeat(${columns}, 3rem)` }}>
@@ -82,10 +85,10 @@ export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
           const isMine = mine.has(seat.id);
           const isTaken = taken.has(seat.id);
           const style = isMine
-            ? "border-green-700 bg-green-600 text-white"
+            ? "border-brand bg-brand text-on-brand"
             : isTaken
-              ? "border-gray-300 bg-gray-200 text-gray-400"
-              : "border-gray-400 bg-white hover:bg-blue-50";
+              ? "border-line bg-surface-2 text-muted line-through"
+              : "border-line bg-surface text-ink hover:border-brand hover:bg-surface-2";
           return (
             <button
               key={seat.id}
@@ -93,7 +96,7 @@ export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
               disabled={isTaken || pending}
               onClick={() => choose(seat.id)}
               title={isMine ? "Click to give this seat back" : undefined}
-              className={`h-12 rounded border text-sm font-medium ${style}`}
+              className={`focus-visible:outline-focus h-12 rounded-lg border text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed ${style}`}
             >
               {seat.label}
             </button>
@@ -101,15 +104,26 @@ export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
         })}
       </div>
 
-      <p className="text-sm text-gray-600">
-        White: free · Green: held by you (click to give back) · Grey: taken
+      <p className="text-muted flex flex-wrap items-center gap-4 text-sm">
+        <span className="flex items-center gap-1">
+          <span className="border-line bg-surface inline-block h-3 w-3 rounded border" />
+          Free
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="border-brand bg-brand inline-block h-3 w-3 rounded border" />
+          Held by you (click to give back)
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="border-line bg-surface-2 inline-block h-3 w-3 rounded border" />
+          Taken
+        </span>
       </p>
 
       <button
         type="button"
         disabled={pending || mine.size === 0}
         onClick={cancelAll}
-        className="rounded border border-red-600 px-3 py-2 text-sm text-red-700 disabled:opacity-40"
+        className="btn btn-danger"
       >
         Cancel all my seats
       </button>

@@ -25,18 +25,17 @@ export function QuantityForm({ eventId, types }: { eventId: string; types: TypeV
         {types.map((type) => {
           const soldOut = type.left === 0;
           return (
-            <li
-              key={type.id}
-              className="flex items-center justify-between gap-3 rounded border border-gray-300 p-3"
-            >
-              <div>
-                <p className="font-medium">{type.name}</p>
-                <p className="text-sm text-gray-600">
-                  {type.price.toLocaleString("en-GB")} ·{" "}
+            <li key={type.id} className="card flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="font-semibold">{type.name}</p>
+                <p className="text-muted flex flex-wrap items-center gap-2 text-sm">
+                  {type.price.toLocaleString("en-GB")}
                   {soldOut ? (
-                    <span className="font-medium text-red-700">Sold out</span>
+                    <span className="badge badge-red">Sold out</span>
                   ) : (
-                    `${type.left.toLocaleString("en-GB")} left`
+                    <span className="badge badge-green">
+                      {type.left.toLocaleString("en-GB")} left
+                    </span>
                   )}
                 </p>
               </div>
@@ -52,14 +51,14 @@ export function QuantityForm({ eventId, types }: { eventId: string; types: TypeV
                 onChange={(event) =>
                   setQuantities((previous) => ({ ...previous, [type.id]: event.target.value }))
                 }
-                className="w-20 rounded border border-gray-300 px-2 py-1 disabled:bg-gray-100"
+                className="input w-20"
               />
             </li>
           );
         })}
       </ul>
 
-      <p className="font-medium">
+      <p className="text-lg font-semibold">
         {tickets} ticket(s) · Total {total.toLocaleString("en-GB")}
       </p>
 
@@ -70,21 +69,17 @@ export function QuantityForm({ eventId, types }: { eventId: string; types: TypeV
           inputMode="numeric"
           placeholder="0788123456"
           required
-          className="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+          className="input mt-1"
         />
       </label>
 
       {state.error ? (
-        <p role="alert" className="text-sm font-medium text-red-700">
+        <p role="alert" className="alert-error">
           {state.error}
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={pending || tickets === 0}
-        className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-50"
-      >
+      <button type="submit" disabled={pending || tickets === 0} className="btn btn-primary">
         {pending ? "Creating order..." : "Pay with mobile money"}
       </button>
     </form>

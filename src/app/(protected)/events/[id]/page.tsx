@@ -28,10 +28,18 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   });
   if (!event) notFound();
 
-  const backLink = (
-    <Link href="/events" className="text-sm text-blue-700 underline">
-      ← Back to tickets
-    </Link>
+  const header = (
+    <div className="space-y-2">
+      <Link href="/events" className="nav-link">
+        ← Back to tickets
+      </Link>
+      <h1 className="text-3xl font-bold">{event.title}</h1>
+      <p className="text-muted text-sm">
+        {event.kind}
+        {event.location ? ` · ${event.location}` : ""} ·{" "}
+        {event.startsAt.toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short" })}
+      </p>
+    </div>
   );
 
   // Standing events: choose a quantity per ticket type.
@@ -41,9 +49,8 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
     return (
       <section className="space-y-6">
-        {backLink}
-        <h1 className="text-2xl font-bold">{event.title}</h1>
-        <p className="text-gray-600">Choose how many tickets of each type you want.</p>
+        {header}
+        <p className="text-muted">Choose how many tickets of each type you want.</p>
         <QuantityForm
           eventId={event.id}
           types={standing.map((type) => {
@@ -75,25 +82,23 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
 
   return (
     <section className="space-y-6">
-      {backLink}
-      <h1 className="text-2xl font-bold">{event.title}</h1>
-      <p className="text-gray-600">Choose your seat. A held seat is kept for 10 minutes.</p>
-      <SeatPicker
-        eventId={event.id}
-        seats={event.seatLayout.seats.map((s) => ({
-          id: s.id,
-          label: s.label,
-          colIndex: s.colIndex,
-        }))}
-        takenSeatIds={takenSeatIds}
-        mySeatIds={mySeatIds}
-      />
-      <Link
-        href={`/events/${event.id}/checkout`}
-        className="inline-block rounded bg-blue-700 px-4 py-2 text-white"
-      >
-        Checkout
-      </Link>
+      {header}
+      <p className="text-muted">Choose your seat. A held seat is kept for 10 minutes.</p>
+      <div className="card space-y-4">
+        <SeatPicker
+          eventId={event.id}
+          seats={event.seatLayout.seats.map((s) => ({
+            id: s.id,
+            label: s.label,
+            colIndex: s.colIndex,
+          }))}
+          takenSeatIds={takenSeatIds}
+          mySeatIds={mySeatIds}
+        />
+        <Link href={`/events/${event.id}/checkout`} className="btn btn-primary">
+          Checkout
+        </Link>
+      </div>
     </section>
   );
 }
