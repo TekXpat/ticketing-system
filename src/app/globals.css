@@ -1,1 +1,79 @@
 @import "tailwindcss";
+
+/* One set of colours for the whole site. Change them here, and every page follows. */
+@theme {
+  --color-page: #1f2023;
+  --color-surface: #2d2e32;
+  --color-surface-2: #3a3b40;
+  --color-line: #4a4b52;
+  --color-ink: #f3f4f6;
+  --color-muted: #a1a1aa;
+  --color-brand: #0b63b8;
+  --color-brand-hover: #0a529a;
+  --color-brand-soft: #3b9cff;
+}
+
+html {
+  color-scheme: dark;
+}
+
+/* Reusable pieces. Pages use these names instead of repeating long class lists. */
+@layer components {
+  .nav-link {
+    @apply text-muted hover:text-ink text-sm transition;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand hover:bg-brand-hover text-white;
+  }
+  .btn-light {
+    @apply text-brand bg-white hover:bg-blue-50;
+  }
+  .btn-outline {
+    @apply border-line text-ink hover:bg-surface-2 border;
+  }
+  .btn-danger {
+    @apply border border-red-500/60 text-red-300 hover:bg-red-950/50;
+  }
+  .btn-small {
+    @apply px-3 py-1 text-xs;
+  }
+
+  .input {
+    @apply border-line bg-surface-2 text-ink placeholder:text-muted focus:border-brand-soft focus:ring-brand-soft/40 w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none disabled:opacity-50;
+  }
+
+  .card {
+    @apply border-line bg-surface rounded-xl border p-4 shadow-lg shadow-black/20;
+  }
+
+  .chip {
+    @apply border-line text-ink hover:bg-surface-2 rounded-full border px-3 py-1 text-sm transition;
+  }
+  .chip-active {
+    @apply border-brand bg-brand hover:bg-brand text-white;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold;
+  }
+  .badge-green {
+    @apply bg-green-900/60 text-green-300;
+  }
+  .badge-red {
+    @apply bg-red-900/60 text-red-300;
+  }
+  .badge-amber {
+    @apply bg-amber-900/60 text-amber-300;
+  }
+  .badge-blue {
+    @apply bg-blue-900/60 text-blue-300;
+  }
+
+  .alert-error {
+    @apply rounded-lg border border-red-500/50 bg-red-950/40 p-3 text-sm text-red-200;
+  }
+}

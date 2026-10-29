@@ -12,40 +12,55 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        <header className="border-b border-gray-200 bg-white">
-          <nav className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-            <Link href="/" className="font-semibold">
+      <body className="bg-page text-ink min-h-screen antialiased">
+        <header className="border-line bg-surface/95 sticky top-0 z-20 border-b backdrop-blur">
+          <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <Link href="/" className="flex items-center gap-2 text-lg font-bold">
+              <span className="bg-brand inline-block h-5 w-5 rounded" aria-hidden="true" />
               {APP_NAME}
             </Link>
-            <div className="flex items-center gap-4 text-sm">
-              <Link href="/events">Tickets</Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link href="/events" className="nav-link">
+                Tickets
+              </Link>
               {user ? (
                 <>
-                  <Link href="/tickets">My tickets</Link>
+                  <Link href="/tickets" className="nav-link">
+                    My tickets
+                  </Link>
                   {user.role === "ORGANISER" ? (
                     <>
-                      <Link href="/events/new">Create a ticket</Link>
-                      <Link href="/gate">Gate</Link>
+                      <Link href="/events/new" className="nav-link">
+                        Create a ticket
+                      </Link>
+                      <Link href="/gate" className="nav-link">
+                        Gate
+                      </Link>
                     </>
                   ) : null}
-                  <Link href="/account">Account</Link>
+                  <Link href="/account" className="nav-link">
+                    Account
+                  </Link>
                   <form action={signOut}>
-                    <button type="submit" className="text-gray-600 hover:text-gray-900">
+                    <button type="submit" className="btn btn-outline btn-small">
                       Sign out
                     </button>
                   </form>
                 </>
               ) : (
                 <>
-                  <Link href="/sign-in">Sign in</Link>
-                  <Link href="/sign-up">Sign up</Link>
+                  <Link href="/sign-up" className="nav-link">
+                    Sign up
+                  </Link>
+                  <Link href="/sign-in" className="btn btn-primary">
+                    Sign in
+                  </Link>
                 </>
               )}
             </div>
           </nav>
         </header>
-        <main className="mx-auto max-w-4xl px-4 py-10">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
     </html>
   );
