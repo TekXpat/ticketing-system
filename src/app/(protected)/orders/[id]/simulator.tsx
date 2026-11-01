@@ -17,27 +17,25 @@ export function Simulator({ orderId }: { orderId: string }) {
     });
   }
 
-  const button = "rounded border border-gray-400 px-3 py-2 text-sm disabled:opacity-50";
-
   return (
     <div className="space-y-3">
-      <p className="text-sm text-gray-600">Mock mobile money provider: choose what it reports.</p>
+      <p className="text-muted text-sm">Mock mobile money provider: choose what it reports.</p>
       <div className="flex flex-wrap gap-2">
-        <button className={button} disabled={pending} onClick={() => send("success")}>
+        <button className="btn btn-primary" disabled={pending} onClick={() => send("success")}>
           Success
         </button>
-        <button className={button} disabled={pending} onClick={() => send("failed")}>
+        <button className="btn btn-outline" disabled={pending} onClick={() => send("failed")}>
           Failure
         </button>
-        <button className={button} disabled={pending} onClick={() => send("timeout")}>
+        <button className="btn btn-outline" disabled={pending} onClick={() => send("timeout")}>
           Timeout
         </button>
-        <button className={button} disabled={pending} onClick={() => send("success", 5)}>
+        <button className="btn btn-outline" disabled={pending} onClick={() => send("success", 5)}>
           Send success 5 times at once
         </button>
       </div>
       {message ? (
-        <p role="status" className="text-sm font-medium">
+        <p role="status" className="alert-warning">
           {message}
         </p>
       ) : null}

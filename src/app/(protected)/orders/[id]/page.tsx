@@ -8,6 +8,19 @@ import { Simulator } from "./simulator";
 
 export const dynamic = "force-dynamic";
 
+const STATUS_BADGE: Record<string, string> = {
+  PAID: "badge badge-green",
+  CONFIRMED: "badge badge-green",
+  PENDING: "badge badge-amber",
+  FAILED: "badge badge-red",
+  EXPIRED: "badge badge-red",
+  TIMED_OUT: "badge badge-red",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  return <span className={STATUS_BADGE[status] ?? "badge badge-blue"}>{status}</span>;
+}
+
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
@@ -24,42 +37,59 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   if (!order) notFound();
 
   return (
-    <section className="space-y-6">
-      <h1 className="text-2xl font-bold">Order for {order.event.title}</h1>
-      <p>
-        Order: <strong>{order.status}</strong> · Payment: <strong>{order.payment?.status}</strong> ·
-        Amount: {order.payment?.amount.toLocaleString("en-GB")}
-      </p>
-      <ul className="space-y-1 text-sm">
-        {order.items.map((item) => (
-          <li key={item.id}>
-            {item.ticketType.name}
-            {item.seat ? ` · seat ${item.seat.label}` : ""}
-            {item.ticket ? " · ticket issued" : ""}
-          </li>
-        ))}
-      </ul>
+    <section className="mx-auto max-w-xl space-y-6">
+      <h1 className="text-3xl font-bold">Order for {order.event.title}</h1>
+
+      <div className="card space-y-3">
+        <p className="flex flex-wrap items-center gap-2 text-sm">
+          Order <StatusBadge status={order.status} />
+          {order.payment ? (
+            <>
+              Payment <StatusBadge status={order.payment.status} />
+            </>
+          ) : null}
+        </p>
+        <p className="text-lg font-semibold">
+          Amount: {order.payment?.amount.toLocaleString("en-GB")}
+        </p>
+        <ul className="border-line space-y-1 border-t pt-3 text-sm">
+          {order.items.map((item) => (
+            <li key={item.id} className="flex flex-wrap justify-between gap-2">
+              <span>
+                {item.ticketType.name}
+                {item.seat ? ` · seat ${item.seat.label}` : ""}
+              </span>
+              {item.ticket ? <span className="badge badge-green">Ticket issued</span> : null}
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {order.status === "PENDING" ? (
-        <>
-          <p className="text-sm text-gray-600">
+        <div className="card space-y-4">
+          <p className="text-muted text-sm">
             Pay before {order.expiresAt.toLocaleTimeString("en-GB", { timeStyle: "short" })}, or the
             seats are released.
           </p>
           <Simulator orderId={order.id} />
           <form action={cancelOrder}>
             <input type="hidden" name="orderId" value={order.id} />
-            <button
-              type="submit"
-              className="rounded border border-red-600 px-3 py-2 text-sm text-red-700"
-            >
+            <button type="submit" className="btn btn-danger">
               Cancel this order
             </button>
           </form>
-        </>
+        </div>
       ) : (
-        <Link href={`/events/${order.eventId}`} className="text-sm text-blue-700 underline">
-          ← Back to the event
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link href={`/events/${order.eventId}`} className="nav-link">
+            ← Back to the event
+          </Link>
+          {order.status === "PAID" ? (
+            <Link href="/account#tickets" className="nav-link">
+              View my tickets
+            </Link>
+          ) : null}
+        </div>
       )}
     </section>
   );
