@@ -1,17 +1,19 @@
 import { db } from "@/lib/db";
+import { gateForKind, type Gate } from "./gates";
 import { isGenuineTicketCode, parseTicketCode } from "./sign";
 
 type TicketDetails = { ticketType: string; seat: string | null; event: string };
 
 export type VerifyResult =
   | { status: "invalid" }
+  | { status: "wrong_gate"; ticketGate: string; gate: string }
   | ({ status: "valid" } & TicketDetails)
   | ({ status: "already_used"; usedAt: string } & TicketDetails);
 
-// Checks a ticket code at the gate and marks the ticket as used.
+// Checks a ticket code at one gate and marks the ticket as used.
 // The type and seat shown come from the database row, which is also what the
 // signature covers, so a holder cannot present a standard ticket as VIP.
-export async function verifyAndUseTicket(code: string): Promise<VerifyResult> {
+export async function verifyAndUseTicket(code: string, gate: Gate): Promise<VerifyResult> {
   const parsed = parseTicketCode(code);
   if (!parsed) return { status: "invalid" };
 
@@ -20,12 +22,23 @@ export async function verifyAndUseTicket(code: string): Promise<VerifyResult> {
     include: {
       ticketType: { select: { name: true } },
       seat: { select: { label: true } },
-      event: { select: { title: true } },
+      event: { select: { title: true, kind: true } },
     },
   });
   // An unknown id and a forged signature give the same answer on purpose.
   if (!ticket) return { status: "invalid" };
   if (!isGenuineTicketCode(code, ticket)) return { status: "invalid" };
+
+  // Wrong category: refuse BEFORE touching the ticket, so it stays unused and
+  // can still be scanned at the right gate.
+  const ticketGate = gateForKind(ticket.event.kind);
+  if (ticketGate?.slug !== gate.slug) {
+    return {
+      status: "wrong_gate",
+      ticketGate: ticketGate?.label ?? ticket.event.kind,
+      gate: gate.label,
+    };
+  }
 
   const details: TicketDetails = {
     ticketType: ticket.ticketType.name,

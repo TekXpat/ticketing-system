@@ -46,7 +46,7 @@ export type CurrentUser = {
   id: string;
   email: string;
   name: string | null;
-  role: "CUSTOMER" | "ORGANISER";
+  role: "CUSTOMER" | "ORGANISER" | "STAFF";
   createdAt: Date;
 };
 
@@ -81,9 +81,16 @@ export async function requireUser(): Promise<CurrentUser> {
   return user;
 }
 
-/** Only organisers may pass. Customers are sent back to the events list. */
+/** Only organisers may pass. Everyone else is sent back to the events list. */
 export async function requireOrganiser(): Promise<CurrentUser> {
   const user = await requireUser();
   if (user.role !== "ORGANISER") redirect("/events");
+  return user;
+}
+
+/** The gate is for organisers and gate staff. Customers are sent to the events list. */
+export async function requireGateAccess(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (user.role !== "ORGANISER" && user.role !== "STAFF") redirect("/events");
   return user;
 }
