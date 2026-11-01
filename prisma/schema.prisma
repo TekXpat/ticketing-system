@@ -181,6 +181,7 @@ model OrderItem {
   ticketTypeId String  @map("ticket_type_id")
   seatId       String? @map("seat_id")
   price        Int
+  holderName   String? @map("holder_name")
 
   order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id])
