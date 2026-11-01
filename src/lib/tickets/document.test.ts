@@ -1,25 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { buildTicketHtml, escapeHtml } from "./document";
+import { buildTicketPdf, pdfSafe } from "./document";
+import { ticketQrPng } from "./qr";
 
-describe("ticket document", () => {
-  it("escapes HTML in organiser-typed text", () => {
-    expect(escapeHtml(`<script>alert("x")</script>`)).toBe(
-      "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;",
-    );
+const base = {
+  code: "abc123.def456",
+  event: "Big show",
+  startsAt: new Date("2026-11-01T10:00:00Z"),
+  ticketType: "VIP",
+  seat: "2C" as string | null,
+  holder: "Aline Uwase" as string | null,
+};
+
+describe("ticket pdf", () => {
+  it("makes a real PDF file", async () => {
+    const bytes = await buildTicketPdf({ ...base, qrPng: await ticketQrPng(base.code) });
+
+    expect(Buffer.from(bytes.slice(0, 5)).toString()).toBe("%PDF-");
+    expect(bytes.length).toBeGreaterThan(1000);
   });
 
-  it("shows the event, type, seat and code, without raw markup from the title", () => {
-    const html = buildTicketHtml({
-      code: "abc.def",
-      event: "<b>Big show</b>",
-      startsAt: new Date("2026-11-01T10:00:00Z"),
-      ticketType: "VIP",
-      seat: "2C",
+  it("does not crash on unusual names, long titles or a missing seat", async () => {
+    const bytes = await buildTicketPdf({
+      ...base,
+      event: "A very long event title ".repeat(10),
+      seat: null,
+      holder: "Éric 😀 ɛ",
+      qrPng: await ticketQrPng(base.code),
     });
 
-    expect(html).toContain("&lt;b&gt;Big show&lt;/b&gt;");
-    expect(html).not.toContain("<b>Big show</b>");
-    expect(html).toContain("VIP · seat 2C");
-    expect(html).toContain("abc.def");
+    expect(bytes.length).toBeGreaterThan(1000);
+  });
+
+  it("replaces characters the PDF font cannot print", () => {
+    expect(pdfSafe("Éric ɛ 😀")).toBe("Éric ? ?");
+    expect(pdfSafe("Plain name")).toBe("Plain name");
   });
 });
