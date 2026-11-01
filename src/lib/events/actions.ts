@@ -17,7 +17,7 @@ export async function createEvent(
 ): Promise<CreateEventState> {
   // Only an organiser may create events. This check is the authoritative one:
   // hiding the link in the header is a convenience, not security.
-  await requireOrganiser();
+  const organiser = await requireOrganiser();
 
   const raw: Record<string, unknown> = Object.fromEntries(formData);
   // An empty box arrives as "", so treat it as "not given".
@@ -48,6 +48,7 @@ export async function createEvent(
       location,
       startsAt,
       seatLayoutId,
+      organiserId: organiser.id,
       ticketTypes: {
         create: ticketTypes.map((type) => ({
           name: type.name,
