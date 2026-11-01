@@ -21,6 +21,8 @@ const themeScript = `(function () {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const isOrganiser = user?.role === "ORGANISER";
+  const canUseGate = isOrganiser || user?.role === "STAFF";
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -40,7 +42,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </Link>
               {user ? (
                 <>
-                  {user.role === "ORGANISER" ? (
+                  {isOrganiser ? (
+                    <Link href="/dashboard" className="nav-link">
+                      Dashboard
+                    </Link>
+                  ) : null}
+                  {canUseGate ? (
                     <Link href="/gate" className="nav-link">
                       Gate
                     </Link>
