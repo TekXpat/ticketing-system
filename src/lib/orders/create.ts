@@ -12,6 +12,13 @@ function fail(error: string): CreateOrderResult {
   return { ok: false, error };
 }
 
+type Row = {
+  ticketTypeId: string;
+  seatId: string | null;
+  price: number;
+  holderName: string | null;
+};
+
 export async function createOrderForUser(
   userId: string,
   input: CreateOrderInput,
@@ -36,7 +43,7 @@ export async function createOrderForUser(
     });
     const byId = new Map(ticketTypes.map((type) => [type.id, type]));
 
-    const rows: { ticketTypeId: string; seatId: string | null; price: number }[] = [];
+    const rows: Row[] = [];
     const seatIds: string[] = [];
     let amount = 0;
 
@@ -56,6 +63,10 @@ export async function createOrderForUser(
       if (!item.seatIds && type.seated) return fail(`Choose seats for ${type.name}.`);
       if (item.seatIds && new Set(item.seatIds).size !== item.seatIds.length) {
         return fail("A seat was listed twice.");
+      }
+      // When names are given there must be exactly one per ticket.
+      if (item.holderNames && item.holderNames.length !== wanted) {
+        return fail("Enter one name for every ticket.");
       }
 
       // Stock in use: paid orders, plus unpaid orders that have not expired.
@@ -77,13 +88,23 @@ export async function createOrderForUser(
       }
 
       if (item.seatIds) {
-        for (const seatId of item.seatIds) {
-          rows.push({ ticketTypeId: type.id, seatId, price: type.price });
+        for (const [index, seatId] of item.seatIds.entries()) {
+          rows.push({
+            ticketTypeId: type.id,
+            seatId,
+            price: type.price,
+            holderName: item.holderNames?.[index] ?? null,
+          });
           seatIds.push(seatId);
         }
       } else {
-        for (let i = 0; i < wanted; i++) {
-          rows.push({ ticketTypeId: type.id, seatId: null, price: type.price });
+        for (let index = 0; index < wanted; index++) {
+          rows.push({
+            ticketTypeId: type.id,
+            seatId: null,
+            price: type.price,
+            holderName: item.holderNames?.[index] ?? null,
+          });
         }
       }
       amount += type.price * wanted;

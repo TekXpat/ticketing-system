@@ -8,6 +8,7 @@ import { createOrderForUser } from "./create";
 export type CheckoutState = { error?: string };
 
 // Turns the signed-in user's live seat holds for one event into an order.
+// Each held seat needs a name, sent as name-<seatId>.
 export async function checkoutHeldSeats(
   _prev: CheckoutState,
   formData: FormData,
@@ -29,10 +30,17 @@ export async function checkoutHeldSeats(
   });
   if (holds.length === 0) return { error: "You have no held seats. Pick a seat first." };
 
+  const holderNames = holds.map((hold) => String(formData.get(`name-${hold.seatId}`) ?? "").trim());
+  if (holderNames.some((name) => !name || name.length > 100)) {
+    return { error: "Enter a name (up to 100 letters) for every ticket." };
+  }
+
   const result = await createOrderForUser(user.id, {
     eventId,
     phone,
-    items: [{ ticketTypeId: ticketType.id, seatIds: holds.map((hold) => hold.seatId) }],
+    items: [
+      { ticketTypeId: ticketType.id, seatIds: holds.map((hold) => hold.seatId), holderNames },
+    ],
   });
   if (!result.ok) return { error: result.error };
 

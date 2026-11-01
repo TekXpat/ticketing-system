@@ -16,6 +16,11 @@ export const createOrderSchema = z.object({
           // General admission: how many. Seated: which seats. Never both.
           quantity: z.number().int().min(1).max(20).optional(),
           seatIds: z.array(z.string().trim().min(1)).min(1).max(20).optional(),
+          // One name per ticket, in the same order as the seats or the quantity.
+          holderNames: z
+            .array(z.string().trim().min(1, { error: "Enter a name for every ticket." }).max(100))
+            .max(20)
+            .optional(),
         })
         .refine((item) => (item.quantity === undefined) !== (item.seatIds === undefined), {
           error: "Give either a quantity or seat ids, not both.",
