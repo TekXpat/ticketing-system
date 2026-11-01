@@ -58,6 +58,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <span>
                 {item.ticketType.name}
                 {item.seat ? ` · seat ${item.seat.label}` : ""}
+                {item.holderName ? ` · ${item.holderName}` : ""}
               </span>
               {item.ticket ? <span className="badge badge-green">Ticket issued</span> : null}
             </li>

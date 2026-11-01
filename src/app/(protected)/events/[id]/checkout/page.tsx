@@ -52,7 +52,10 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
           <p className="border-line border-t pt-3 text-lg font-semibold">
             Total: {(ticketType.price * holds.length).toLocaleString("en-GB")}
           </p>
-          <CheckoutForm eventId={id} />
+          <CheckoutForm
+            eventId={id}
+            seats={holds.map((hold) => ({ seatId: hold.seatId, label: hold.seat.label }))}
+          />
           <form action={cancelHolds}>
             <input type="hidden" name="eventId" value={id} />
             <button type="submit" className="btn btn-danger">
