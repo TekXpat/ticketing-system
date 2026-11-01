@@ -10,6 +10,7 @@ datasource db {
 enum Role {
   CUSTOMER
   ORGANISER
+  STAFF
 }
 
 model User {
@@ -24,6 +25,7 @@ model User {
 
   seatReservations SeatReservation[]
   orders           Order[]
+  events           Event[]           @relation("EventOrganiser")
 
   @@map("users")
 }
@@ -50,6 +52,9 @@ model Event {
   startsAt    DateTime @map("starts_at")
   createdAt   DateTime @default(now()) @map("created_at")
 
+  organiserId String? @map("organiser_id")
+  organiser   User?   @relation("EventOrganiser", fields: [organiserId], references: [id], onDelete: SetNull)
+
   seatLayoutId String?      @map("seat_layout_id")
   seatLayout   SeatLayout?  @relation(fields: [seatLayoutId], references: [id])
   ticketTypes  TicketType[]
@@ -58,6 +63,7 @@ model Event {
   orders           Order[]
   tickets          Ticket[]
 
+  @@index([organiserId])
   @@map("events")
 }
 
