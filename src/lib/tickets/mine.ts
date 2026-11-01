@@ -8,6 +8,7 @@ export async function getMyTickets(userId: string) {
       event: { select: { title: true, startsAt: true } },
       ticketType: { select: { name: true } },
       seat: { select: { label: true } },
+      orderItem: { select: { holderName: true } },
     },
     orderBy: { createdAt: "desc" },
   });

@@ -2,7 +2,12 @@ import { db } from "@/lib/db";
 import { gateForKind, type Gate } from "./gates";
 import { isGenuineTicketCode, parseTicketCode } from "./sign";
 
-type TicketDetails = { ticketType: string; seat: string | null; event: string };
+type TicketDetails = {
+  ticketType: string;
+  seat: string | null;
+  event: string;
+  holder: string | null;
+};
 
 export type VerifyResult =
   | { status: "invalid" }
@@ -11,8 +16,8 @@ export type VerifyResult =
   | ({ status: "already_used"; usedAt: string } & TicketDetails);
 
 // Checks a ticket code at one gate and marks the ticket as used.
-// The type and seat shown come from the database row, which is also what the
-// signature covers, so a holder cannot present a standard ticket as VIP.
+// The type, seat and name shown come from the database row, so a holder cannot
+// present a standard ticket as VIP or change the name.
 export async function verifyAndUseTicket(code: string, gate: Gate): Promise<VerifyResult> {
   const parsed = parseTicketCode(code);
   if (!parsed) return { status: "invalid" };
@@ -23,6 +28,7 @@ export async function verifyAndUseTicket(code: string, gate: Gate): Promise<Veri
       ticketType: { select: { name: true } },
       seat: { select: { label: true } },
       event: { select: { title: true, kind: true } },
+      orderItem: { select: { holderName: true } },
     },
   });
   // An unknown id and a forged signature give the same answer on purpose.
@@ -44,6 +50,7 @@ export async function verifyAndUseTicket(code: string, gate: Gate): Promise<Veri
     ticketType: ticket.ticketType.name,
     seat: ticket.seat?.label ?? null,
     event: ticket.event.title,
+    holder: ticket.orderItem.holderName,
   };
 
   // Only one scan can move used_at from NULL to a time. The others change nothing.

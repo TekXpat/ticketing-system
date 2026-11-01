@@ -57,6 +57,7 @@ export function GateForm({ gate }: { gate: { slug: string; label: string } }) {
           className="border-success bg-success-soft text-success rounded-xl border-2 p-6"
         >
           <p className="text-2xl font-bold">Allowed: let them in</p>
+          {result.holder ? <p className="text-lg font-semibold">{result.holder}</p> : null}
           <p>
             {result.event} · {result.ticketType}
             {result.seat ? ` · seat ${result.seat}` : ""}
@@ -70,6 +71,7 @@ export function GateForm({ gate }: { gate: { slug: string; label: string } }) {
           className="border-warning bg-warning-soft text-warning rounded-xl border-2 p-6"
         >
           <p className="text-2xl font-bold">Already used</p>
+          {result.holder ? <p className="text-lg font-semibold">{result.holder}</p> : null}
           <p>
             {result.event} · {result.ticketType}
             {result.seat ? ` · seat ${result.seat}` : ""}
