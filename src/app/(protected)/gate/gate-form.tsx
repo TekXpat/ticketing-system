@@ -1,21 +1,39 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { verifyTicket, type GateState } from "@/lib/tickets/actions";
+import { QrReader } from "./qr-reader";
 
 const initialState: GateState = {};
 
 export function GateForm({ gate }: { gate: { slug: string; label: string } }) {
   const [state, action, pending] = useActionState(verifyTicket, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const result = state.result;
+
+  // A code read from the camera or a picture goes into the box and is checked.
+  function handleScanned(code: string) {
+    if (!inputRef.current) return;
+    inputRef.current.value = code;
+    formRef.current?.requestSubmit();
+  }
 
   return (
     <div className="space-y-4">
-      <form action={action} className="space-y-3">
+      <QrReader onCode={handleScanned} />
+
+      <form ref={formRef} action={action} className="space-y-3">
         <input type="hidden" name="gate" value={gate.slug} />
         <label className="block text-sm font-medium">
           Ticket code
-          <input name="code" autoComplete="off" required className="input mt-1 font-mono text-sm" />
+          <input
+            ref={inputRef}
+            name="code"
+            autoComplete="off"
+            required
+            className="input mt-1 font-mono text-sm"
+          />
         </label>
         <button type="submit" disabled={pending} className="btn btn-primary">
           {pending ? "Checking..." : "Check ticket"}
