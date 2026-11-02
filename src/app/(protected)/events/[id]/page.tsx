@@ -1,18 +1,26 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
+import { ticketsLeftByType } from "@/lib/events/availability";
+import { expireOverdueOrders } from "@/lib/payments/expire";
+import { QuantityForm } from "./quantity-form";
 import { SeatPicker } from "./seat-picker";
 
-// Seat availability changes every second, so build this page fresh each visit.
+// Availability changes every second, so build this page fresh each visit.
 export const dynamic = "force-dynamic";
 
-export default async function EventSeatsPage({ params }: { params: Promise<{ id: string }> }) {
+const MAX_PER_ORDER = 20;
+
+export default async function EventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
+  await expireOverdueOrders();
 
   const event = await db.event.findUnique({
     where: { id },
     include: {
+      ticketTypes: { orderBy: { price: "desc" } },
       seatLayout: {
         include: { seats: { orderBy: [{ rowIndex: "asc" }, { colIndex: "asc" }] } },
       },
@@ -20,11 +28,42 @@ export default async function EventSeatsPage({ params }: { params: Promise<{ id:
   });
   if (!event) notFound();
 
+  const header = (
+    <div className="space-y-2">
+      <Link href="/events" className="nav-link">
+        ← Back to tickets
+      </Link>
+      <h1 className="text-3xl font-bold">{event.title}</h1>
+      <p className="text-muted text-sm">
+        {event.kind}
+        {event.location ? ` · ${event.location}` : ""} ·{" "}
+        {event.startsAt.toLocaleString("en-GB", { dateStyle: "long", timeStyle: "short" })}
+      </p>
+    </div>
+  );
+
+  // Standing events: choose a quantity per ticket type.
   if (!event.seatLayout) {
+    const standing = event.ticketTypes.filter((type) => !type.seated);
+    const left = await ticketsLeftByType(standing);
+
     return (
-      <section className="space-y-4">
-        <h1 className="text-2xl font-bold">{event.title}</h1>
-        <p className="text-gray-600">This event has no assigned seats.</p>
+      <section className="space-y-6">
+        {header}
+        <p className="text-muted">Choose how many tickets of each type you want.</p>
+        <QuantityForm
+          eventId={event.id}
+          types={standing.map((type) => {
+            const remaining = left.get(type.id) ?? 0;
+            return {
+              id: type.id,
+              name: type.name,
+              price: type.price,
+              left: remaining,
+              max: Math.min(remaining, type.maxPerCustomer ?? MAX_PER_ORDER, MAX_PER_ORDER),
+            };
+          })}
+        />
       </section>
     );
   }
@@ -43,18 +82,23 @@ export default async function EventSeatsPage({ params }: { params: Promise<{ id:
 
   return (
     <section className="space-y-6">
-      <h1 className="text-2xl font-bold">{event.title}</h1>
-      <p className="text-gray-600">Choose your seat. A held seat is kept for 10 minutes.</p>
-      <SeatPicker
-        eventId={event.id}
-        seats={event.seatLayout.seats.map((s) => ({
-          id: s.id,
-          label: s.label,
-          colIndex: s.colIndex,
-        }))}
-        takenSeatIds={takenSeatIds}
-        mySeatIds={mySeatIds}
-      />
+      {header}
+      <p className="text-muted">Choose your seat. A held seat is kept for 10 minutes.</p>
+      <div className="card space-y-4">
+        <SeatPicker
+          eventId={event.id}
+          seats={event.seatLayout.seats.map((s) => ({
+            id: s.id,
+            label: s.label,
+            colIndex: s.colIndex,
+          }))}
+          takenSeatIds={takenSeatIds}
+          mySeatIds={mySeatIds}
+        />
+        <Link href={`/events/${event.id}/checkout`} className="btn btn-primary">
+          Checkout
+        </Link>
+      </div>
     </section>
   );
 }

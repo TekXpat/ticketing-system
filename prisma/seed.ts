@@ -12,14 +12,28 @@ const DEMO_PASSWORD = "password123";
 async function main() {
   await prisma.user.upsert({
     where: { email: DEMO_EMAIL },
-    update: {},
+    update: { role: "ORGANISER" },
     create: {
       email: DEMO_EMAIL,
       name: "Demo User",
+      role: "ORGANISER",
       passwordHash: await hashPassword(DEMO_PASSWORD),
     },
   });
   console.log(`Seeded ${DEMO_EMAIL} / ${DEMO_PASSWORD}`);
+
+  // A gate staff account, so the gate can be tried without editing the database.
+  await prisma.user.upsert({
+    where: { email: "staff@example.com" },
+    update: { role: "STAFF" },
+    create: {
+      email: "staff@example.com",
+      name: "Gate Staff",
+      role: "STAFF",
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+    },
+  });
+  console.log(`Seeded staff@example.com / ${DEMO_PASSWORD}`);
   // Demo bus layout: 5 rows x 4 seats, reused by every bus journey.
   const BUS_LAYOUT_NAME = "Demo bus (20 seats)";
   const existingBus = await prisma.seatLayout.findFirst({

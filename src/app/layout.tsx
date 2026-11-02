@@ -2,44 +2,75 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { APP_NAME } from "@/lib/config";
 import { getCurrentUser } from "@/lib/auth/session";
-import { signOut } from "@/lib/auth/actions";
+import { ThemeToggle } from "@/components/theme-toggle";
 import "./globals.css";
 
 export const metadata: Metadata = { title: APP_NAME };
 
+// Runs before the page is drawn, so there is no flash of the wrong theme.
+// A saved choice wins. Otherwise the device setting decides.
+const themeScript = `(function () {
+  try {
+    var theme = localStorage.getItem("theme");
+    if (theme !== "light" && theme !== "dark") {
+      theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+  } catch (error) {}
+})();`;
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const isOrganiser = user?.role === "ORGANISER";
+  const canUseGate = isOrganiser || user?.role === "STAFF";
 
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-gray-50 text-gray-900 antialiased">
-        <header className="border-b border-gray-200 bg-white">
-          <nav className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-            <Link href="/" className="font-semibold">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body className="bg-page text-ink min-h-screen antialiased">
+        <header className="border-line bg-surface sticky top-0 z-20 border-b">
+          <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+            <Link href="/" className="flex items-center gap-2 text-lg font-bold">
+              <span className="bg-brand inline-block h-5 w-5 rounded" aria-hidden="true" />
               {APP_NAME}
             </Link>
-            <div className="flex items-center gap-4 text-sm">
-              <Link href="/events">Tickets</Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link href="/events" className="nav-link">
+                Tickets
+              </Link>
               {user ? (
                 <>
-                  <Link href="/events/new">Create a ticket</Link>
-                  <Link href="/account">Account</Link>
-                  <form action={signOut}>
-                    <button type="submit" className="text-gray-600 hover:text-gray-900">
-                      Sign out
-                    </button>
-                  </form>
+                  {isOrganiser ? (
+                    <Link href="/dashboard" className="nav-link">
+                      Dashboard
+                    </Link>
+                  ) : null}
+                  {canUseGate ? (
+                    <Link href="/gate" className="nav-link">
+                      Gate
+                    </Link>
+                  ) : null}
+                  <Link href="/account" className="nav-link">
+                    Account
+                  </Link>
                 </>
               ) : (
                 <>
-                  <Link href="/sign-in">Sign in</Link>
-                  <Link href="/sign-up">Sign up</Link>
+                  <Link href="/sign-up" className="nav-link">
+                    Sign up
+                  </Link>
+                  <Link href="/sign-in" className="btn btn-primary btn-small">
+                    Sign in
+                  </Link>
                 </>
               )}
+              <ThemeToggle />
             </div>
           </nav>
         </header>
-        <main className="mx-auto max-w-4xl px-4 py-10">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
     </html>
   );

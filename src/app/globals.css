@@ -1,1 +1,157 @@
 @import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   One colour system for the whole site (60-30-10):
+   60% page background, 30% cards and panels, 10% one blue accent.
+   Pages use the names below, never hard-coded colours.
+   --------------------------------------------------------------- */
+
+/* Light theme (default) */
+:root {
+  color-scheme: light;
+  --page: #f3f5f9;
+  --surface: #ffffff;
+  --surface-2: #e8edf5;
+  --line: #c4cddc;
+  --ink: #101828;
+  --muted: #475467;
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --on-accent: #ffffff;
+  --link: #1d4ed8;
+  --focus: #1d4ed8;
+  --success: #166534;
+  --success-bg: #dcfce7;
+  --danger: #991b1b;
+  --danger-bg: #fee2e2;
+  --warning: #854d0e;
+  --warning-bg: #fef3c7;
+  --shadow: rgb(16 24 40 / 0.1);
+}
+
+/* Dark theme: chosen by the toggle, or by the device setting on first visit */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #13151a;
+  --surface: #1d2026;
+  --surface-2: #2a2e37;
+  --line: #3d4350;
+  --ink: #f2f4f7;
+  --muted: #b3bac6;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --on-accent: #ffffff;
+  --link: #8ab8ff;
+  --focus: #8ab8ff;
+  --success: #86efac;
+  --success-bg: #12301e;
+  --danger: #fca5a5;
+  --danger-bg: #3a1414;
+  --warning: #fde68a;
+  --warning-bg: #3a2e0a;
+  --shadow: rgb(0 0 0 / 0.45);
+}
+
+/* Tell Tailwind about the names. "inline" keeps them live when the theme changes. */
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-brand: var(--accent);
+  --color-brand-hover: var(--accent-hover);
+  --color-brand-soft: var(--link);
+  --color-on-brand: var(--on-accent);
+  --color-focus: var(--focus);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-bg);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-bg);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-bg);
+}
+
+/* The toggle shows the mode you would switch TO. No script is needed for the label. */
+.theme-to-dark {
+  display: inline;
+}
+.theme-to-light {
+  display: none;
+}
+[data-theme="dark"] .theme-to-dark {
+  display: none;
+}
+[data-theme="dark"] .theme-to-light {
+  display: inline;
+}
+
+@layer components {
+  .nav-link {
+    @apply text-muted hover:text-ink focus-visible:outline-focus rounded text-sm font-medium transition hover:underline focus-visible:outline-2 focus-visible:outline-offset-2;
+  }
+
+  .btn {
+    @apply focus-visible:outline-focus inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-brand text-on-brand hover:bg-brand-hover;
+  }
+  .btn-light {
+    @apply bg-surface-2 text-brand-soft hover:bg-line;
+  }
+  .btn-outline {
+    @apply border-line bg-surface text-ink hover:bg-surface-2 border;
+  }
+  .btn-danger {
+    @apply border-danger text-danger hover:bg-danger-soft border;
+  }
+  .btn-small {
+    @apply px-3 py-1 text-xs;
+  }
+
+  .input {
+    @apply border-line bg-surface text-ink placeholder:text-muted focus:border-focus focus:outline-focus w-full rounded-lg border px-3 py-2 focus:outline-2 disabled:opacity-50;
+  }
+
+  .card {
+    @apply border-line bg-surface rounded-xl border p-5;
+    box-shadow:
+      0 1px 2px var(--shadow),
+      0 4px 14px var(--shadow);
+  }
+
+  .chip {
+    @apply border-line bg-surface text-ink hover:bg-surface-2 focus-visible:outline-focus rounded-full border px-3 py-1 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2;
+  }
+  .chip-active {
+    @apply border-brand bg-brand text-on-brand hover:bg-brand-hover;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-green {
+    @apply bg-success-soft text-success;
+  }
+  .badge-red {
+    @apply bg-danger-soft text-danger;
+  }
+  .badge-amber {
+    @apply bg-warning-soft text-warning;
+  }
+  .badge-blue {
+    @apply bg-surface-2 text-brand-soft;
+  }
+
+  .alert-error {
+    @apply border-danger bg-danger-soft text-danger rounded-lg border p-3 text-sm;
+  }
+  .alert-success {
+    @apply border-success bg-success-soft text-success rounded-lg border p-3 text-sm;
+  }
+  .alert-warning {
+    @apply border-warning bg-warning-soft text-warning rounded-lg border p-3 text-sm;
+  }
+}

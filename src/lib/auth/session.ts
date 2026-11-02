@@ -42,7 +42,13 @@ export async function destroySession() {
   cookieStore.delete(COOKIE_NAME);
 }
 
-export type CurrentUser = { id: string; email: string; name: string | null; createdAt: Date };
+export type CurrentUser = {
+  id: string;
+  email: string;
+  name: string | null;
+  role: "CUSTOMER" | "ORGANISER" | "STAFF";
+  createdAt: Date;
+};
 
 /**
  * The signed-in user, or null. Wrapped in React `cache` so a layout, a page and
@@ -54,7 +60,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 
   const session = await db.session.findUnique({
     where: { id: hashToken(token) },
-    include: { user: { select: { id: true, email: true, name: true, createdAt: true } } },
+    include: {
+      user: { select: { id: true, email: true, name: true, role: true, createdAt: true } },
+    },
   });
   if (!session) return null;
 
@@ -70,5 +78,19 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
+  return user;
+}
+
+/** Only organisers may pass. Everyone else is sent back to the events list. */
+export async function requireOrganiser(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (user.role !== "ORGANISER") redirect("/events");
+  return user;
+}
+
+/** The gate is for organisers and gate staff. Customers are sent to the events list. */
+export async function requireGateAccess(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (user.role !== "ORGANISER" && user.role !== "STAFF") redirect("/events");
   return user;
 }
