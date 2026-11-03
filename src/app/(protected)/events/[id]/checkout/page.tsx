@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { expireOverdueOrders } from "@/lib/payments/expire";
 import { cancelHolds } from "@/lib/seats/actions";
+import { myUnpaidOrders, seatsReadyToCheckOut } from "@/lib/seats/mine";
 import { CheckoutForm } from "./checkout-form";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +21,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
   if (!event) notFound();
   const ticketType = event.ticketTypes[0];
 
-  const holds = await db.seatReservation.findMany({
-    where: { eventId: id, userId: user.id, status: "HELD", expiresAt: { gt: new Date() } },
-    include: { seat: true },
-    orderBy: { seat: { label: "asc" } },
-  });
+  const holds = await seatsReadyToCheckOut(user.id, id);
+  const unpaid = await myUnpaidOrders(user.id, id);
 
   return (
     <section className="mx-auto max-w-xl space-y-6">
@@ -32,9 +30,24 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
         ← Back to seats
       </Link>
       <h1 className="text-3xl font-bold">Checkout: {event.title}</h1>
+
+      {unpaid.length > 0 ? (
+        <div className="alert-warning space-y-1">
+          <p className="font-medium">You already have an unpaid order for this event.</p>
+          {unpaid.map((order) => (
+            <p key={order.id}>
+              <Link href={`/orders/${order.id}`} className="font-medium underline">
+                Pay or cancel it
+              </Link>{" "}
+              (until {order.expiresAt.toLocaleTimeString("en-GB", { timeStyle: "short" })})
+            </p>
+          ))}
+        </div>
+      ) : null}
+
       {holds.length === 0 || !ticketType ? (
         <p className="text-muted">
-          You have no held seats.{" "}
+          You have no new held seats.{" "}
           <Link href={`/events/${id}`} className="text-brand-soft font-medium underline">
             Choose seats
           </Link>
@@ -59,7 +72,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
           <form action={cancelHolds}>
             <input type="hidden" name="eventId" value={id} />
             <button type="submit" className="btn btn-danger">
-              Cancel and release my seats
+              Cancel and release my new seats
             </button>
           </form>
         </div>
