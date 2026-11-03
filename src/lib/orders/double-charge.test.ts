@@ -8,7 +8,6 @@ import { createOrderForUser } from "./create";
 // Runs against the real database, like the other tests.
 describe("a seat is never charged twice", () => {
   const tag = randomUUID();
-
   let userId: string;
   let layoutId: string;
   let eventId: string;
@@ -18,12 +17,8 @@ describe("a seat is never charged twice", () => {
 
   beforeAll(async () => {
     const user = await db.user.create({
-      data: {
-        email: `twice-${tag}@example.com`,
-        passwordHash: "unused",
-      },
+      data: { email: `twice-${tag}@example.com`, passwordHash: "unused" },
     });
-
     const layout = await db.seatLayout.create({
       data: {
         name: `twice-layout-${tag}`,
@@ -36,13 +31,9 @@ describe("a seat is never charged twice", () => {
       },
       include: { seats: true },
     });
-
     const a = layout.seats.find((seat) => seat.label === "1A");
     const b = layout.seats.find((seat) => seat.label === "1B");
-
-    if (!a || !b) {
-      throw new Error("Test setup failed: missing seats.");
-    }
+    if (!a || !b) throw new Error("Test setup failed: missing seats.");
 
     const event = await db.event.create({
       data: {
@@ -50,23 +41,13 @@ describe("a seat is never charged twice", () => {
         kind: "bus",
         startsAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         seatLayoutId: layout.id,
-        ticketTypes: {
-          create: {
-            name: "Regular",
-            price: 5000,
-            quantity: 3, // FIX: Allow duplicate-seat validation to run
-            seated: true,
-          },
-        },
+        // More stock than seats, so the seat rule is what stops the second order.
+        ticketTypes: { create: { name: "Regular", price: 5000, quantity: 5, seated: true } },
       },
       include: { ticketTypes: true },
     });
-
     const type = event.ticketTypes[0];
-
-    if (!type) {
-      throw new Error("Test setup failed: missing ticket type.");
-    }
+    if (!type) throw new Error("Test setup failed: missing ticket type.");
 
     userId = user.id;
     layoutId = layout.id;
@@ -77,28 +58,14 @@ describe("a seat is never charged twice", () => {
   });
 
   afterEach(async () => {
-    await db.order.deleteMany({
-      where: { eventId },
-    });
-
-    await db.seatReservation.deleteMany({
-      where: { eventId },
-    });
+    await db.order.deleteMany({ where: { eventId } });
+    await db.seatReservation.deleteMany({ where: { eventId } });
   });
 
   afterAll(async () => {
-    await db.event.delete({
-      where: { id: eventId },
-    });
-
-    await db.seatLayout.delete({
-      where: { id: layoutId },
-    });
-
-    await db.user.delete({
-      where: { id: userId },
-    });
-
+    await db.event.delete({ where: { id: eventId } });
+    await db.seatLayout.delete({ where: { id: layoutId } });
+    await db.user.delete({ where: { id: userId } });
     await db.$disconnect();
   });
 
@@ -116,24 +83,18 @@ describe("a seat is never charged twice", () => {
 
   it("refuses a second order that contains a seat already in the first", async () => {
     await holdBoth();
-
     const first = await orderFor([seatA]);
-
     expect(first.ok).toBe(true);
 
     // Checking out again with both held seats must not charge seat 1A twice.
     const second = await orderFor([seatA, seatB]);
 
     expect(second.ok).toBe(false);
-
-    if (!second.ok) {
-      expect(second.error).toContain("already in another order");
-    }
+    if (!second.ok) expect(second.error).toContain("already in another order");
   });
 
   it("lets the second order take only the new seat", async () => {
     await holdBoth();
-
     await orderFor([seatA]);
 
     const second = await orderFor([seatB]);
@@ -143,7 +104,6 @@ describe("a seat is never charged twice", () => {
 
   it("offers only the seats that are not already in an order", async () => {
     await holdBoth();
-
     await orderFor([seatA]);
 
     const ready = await seatsReadyToCheckOut(userId, eventId);
