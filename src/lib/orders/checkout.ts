@@ -28,7 +28,9 @@ export async function checkoutHeldSeats(
   const holds = await seatsReadyToCheckOut(user.id, eventId);
   if (holds.length === 0) return { error: "You have no held seats ready to pay for." };
 
-  const holderNames = holds.map((hold) => String(formData.get(`name-${hold.seatId}`) ?? "").trim());
+  const holderNames = holds.map((hold) =>
+    String(formData.get(`name-${hold.seatId}`) ?? "").trim(),
+  );
   if (holderNames.some((name) => !name || name.length > 100)) {
     return { error: "Enter a name (up to 100 letters) for every ticket." };
   }
