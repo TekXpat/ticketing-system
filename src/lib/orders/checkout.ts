@@ -3,12 +3,13 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
+import { seatsReadyToCheckOut } from "@/lib/seats/mine";
 import { createOrderForUser } from "./create";
 
 export type CheckoutState = { error?: string };
 
-// Turns the signed-in user's live seat holds for one event into an order.
-// Each held seat needs a name, sent as name-<seatId>.
+// Turns the signed-in user's held seats that are not yet in an order into an
+// order. Each seat needs a name, sent as name-<seatId>.
 export async function checkoutHeldSeats(
   _prev: CheckoutState,
   formData: FormData,
@@ -24,13 +25,12 @@ export async function checkoutHeldSeats(
   const ticketType = event?.ticketTypes[0];
   if (!event || !ticketType) return { error: "This event has no seated tickets." };
 
-  const holds = await db.seatReservation.findMany({
-    where: { eventId, userId: user.id, status: "HELD", expiresAt: { gt: new Date() } },
-    select: { seatId: true },
-  });
-  if (holds.length === 0) return { error: "You have no held seats. Pick a seat first." };
+  const holds = await seatsReadyToCheckOut(user.id, eventId);
+  if (holds.length === 0) return { error: "You have no held seats ready to pay for." };
 
-  const holderNames = holds.map((hold) => String(formData.get(`name-${hold.seatId}`) ?? "").trim());
+  const holderNames = holds.map((hold) =>
+    String(formData.get(`name-${hold.seatId}`) ?? "").trim(),
+  );
   if (holderNames.some((name) => !name || name.length > 100)) {
     return { error: "Enter a name (up to 100 letters) for every ticket." };
   }
