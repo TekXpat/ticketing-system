@@ -6,7 +6,13 @@ import { QrReader } from "./qr-reader";
 
 const initialState: GateState = {};
 
-export function GateForm({ gate }: { gate: { slug: string; label: string } }) {
+export function GateForm({
+  gate,
+  event,
+}: {
+  gate: { slug: string; label: string };
+  event: { id: string; title: string };
+}) {
   const [state, action, pending] = useActionState(verifyTicket, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -21,10 +27,15 @@ export function GateForm({ gate }: { gate: { slug: string; label: string } }) {
 
   return (
     <div className="space-y-4">
+      <p className="text-sm">
+        Admitting: <span className="font-semibold">{event.title}</span>
+      </p>
+
       <QrReader onCode={handleScanned} />
 
       <form ref={formRef} action={action} className="space-y-3">
         <input type="hidden" name="gate" value={gate.slug} />
+        <input type="hidden" name="eventId" value={event.id} />
         <label className="block text-sm font-medium">
           Ticket code
           <input
@@ -64,6 +75,19 @@ export function GateForm({ gate }: { gate: { slug: string; label: string } }) {
           <p className="text-2xl font-bold">Wrong gate</p>
           <p>
             Wrong gate. This ticket is for {result.ticketGate}. You are at the {result.gate} gate.
+          </p>
+          <p className="text-sm">The ticket was not marked as used.</p>
+        </div>
+      ) : null}
+
+      {result?.status === "wrong_event" ? (
+        <div
+          role="status"
+          className="border-danger bg-danger-soft text-danger rounded-xl border-2 p-6"
+        >
+          <p className="text-2xl font-bold">Wrong event</p>
+          <p>
+            This ticket is for {result.ticketEvent}. You are admitting {event.title}.
           </p>
           <p className="text-sm">The ticket was not marked as used.</p>
         </div>
