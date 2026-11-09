@@ -2,6 +2,9 @@ import { db } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 
 const HOLD_MINUTES = 10;
+// Used when the organiser set no per-customer limit, so one account cannot
+// block a whole bus.
+const DEFAULT_MAX_HOLDS = 10;
 
 export type HoldSeatResult =
   { ok: true; reservationId: string; expiresAt: Date } | { ok: false; error: string };
@@ -26,10 +29,24 @@ export async function holdSeatForUser(
     return { ok: false, error: "That seat does not exist for this event." };
   }
 
+  // The most seats one customer may hold or own for this event.
+  const seatedTypes = await db.ticketType.findMany({
+    where: { eventId, seated: true },
+    select: { maxPerCustomer: true },
+  });
+  const limits = seatedTypes.flatMap((type) =>
+    type.maxPerCustomer === null ? [] : [type.maxPerCustomer],
+  );
+  const limit = limits.length > 0 ? Math.min(...limits) : DEFAULT_MAX_HOLDS;
+
   const expiresAt = new Date(Date.now() + HOLD_MINUTES * 60 * 1000);
 
   try {
-    const reservation = await db.$transaction(async (tx) => {
+    const outcome = await db.$transaction(async (tx) => {
+      // One customer's holds are counted one at a time, so clicking five seats
+      // at once cannot slip past the limit.
+      await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+
       // An expired hold still has a row, which would block the seat forever.
       await tx.seatReservation.deleteMany({
         where: {
@@ -40,13 +57,27 @@ export async function holdSeatForUser(
         },
       });
 
+      // Seats already paid for count as well as live holds.
+      const owned = await tx.seatReservation.count({
+        where: {
+          eventId,
+          userId,
+          OR: [{ status: "SOLD" }, { status: "HELD", expiresAt: { gt: new Date() } }],
+        },
+      });
+      if (owned >= limit) return { limited: true as const };
+
       // Insert and let the unique (eventId, seatId) rule decide the winner.
-      return tx.seatReservation.create({
+      const reservation = await tx.seatReservation.create({
         data: { eventId, seatId, userId, expiresAt },
       });
+      return { limited: false as const, reservation };
     });
 
-    return { ok: true, reservationId: reservation.id, expiresAt };
+    if (outcome.limited) {
+      return { ok: false, error: `You can hold at most ${limit} seats for this event.` };
+    }
+    return { ok: true, reservationId: outcome.reservation.id, expiresAt };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return { ok: false, error: "Sorry, that seat was just taken." };
