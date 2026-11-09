@@ -43,6 +43,10 @@ export async function createOrderForUser(
       where: { id: { in: typeIds }, eventId: input.eventId },
     });
     const byId = new Map(ticketTypes.map((type) => [type.id, type]));
+    const event = await tx.event.findUnique({
+      where: { id: input.eventId },
+      select: { seatLayoutId: true },
+    });
 
     const rows: Row[] = [];
     const seatIds: string[] = [];
@@ -72,6 +76,23 @@ export async function createOrderForUser(
       // When names are given there must be exactly one per ticket.
       if (item.holderNames && item.holderNames.length !== wanted) {
         return fail("Enter one name for every ticket.");
+      }
+
+      // NEW: every seat must be in this event's layout and in the section that
+      // this ticket type sells (old events have section "main" on both sides).
+      if (item.seatIds) {
+        const seats = await tx.seat.findMany({
+          where: { id: { in: item.seatIds } },
+          select: { label: true, layoutId: true, section: true },
+        });
+        if (
+          seats.length !== item.seatIds.length ||
+          seats.some((s) => s.layoutId !== event?.seatLayoutId)
+        ) {
+          return fail("One of these seats does not exist for this event.");
+        }
+        const wrong = seats.find((s) => s.section !== (type.section ?? "main"));
+        if (wrong) return fail(`Seat ${wrong.label} is not sold as "${type.name}" tickets.`);
       }
 
       // Stock in use: paid orders, plus unpaid orders that have not expired.
