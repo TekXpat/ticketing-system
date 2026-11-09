@@ -13,9 +13,9 @@ export function AuthForm({ mode, action }: Props) {
   const errors = state.fieldErrors ?? {};
 
   return (
-    <form action={formAction} className="max-w-sm space-y-4" noValidate>
+    <form action={formAction} className="space-y-4" noValidate>
       {state.error && (
-        <p role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">
+        <p role="alert" className="alert-error">
           {state.error}
         </p>
       )}
@@ -44,11 +44,7 @@ export function AuthForm({ mode, action }: Props) {
         errors={errors.password}
       />
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
-      >
+      <button type="submit" disabled={pending} className="btn btn-primary w-full">
         {pending ? "Please wait…" : mode === "sign-up" ? "Create account" : "Sign in"}
       </button>
     </form>
@@ -79,10 +75,10 @@ function Field({ label, name, type = "text", autoComplete, defaultValue, errors 
         defaultValue={defaultValue}
         aria-invalid={errors ? true : undefined}
         aria-describedby={errors ? errorId : undefined}
-        className="w-full rounded border border-gray-300 px-3 py-2"
+        className="input"
       />
       {errors && (
-        <p id={errorId} className="text-sm text-red-600">
+        <p id={errorId} className="text-sm text-red-400">
           {errors.join(" ")}
         </p>
       )}
