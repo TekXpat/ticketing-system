@@ -80,6 +80,11 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
   const mySeatIds = reservations.filter((r) => r.userId === user.id).map((r) => r.seatId);
   const takenSeatIds = reservations.filter((r) => r.userId !== user.id).map((r) => r.seatId);
 
+  // Each seated ticket type sells the seats of its section.
+  const sections = event.ticketTypes
+    .filter((type) => type.seated)
+    .map((type) => ({ key: type.section ?? "main", name: type.name, price: type.price }));
+
   return (
     <section className="space-y-6">
       {header}
@@ -91,7 +96,9 @@ export default async function EventPage({ params }: { params: Promise<{ id: stri
             id: s.id,
             label: s.label,
             colIndex: s.colIndex,
+            section: s.section,
           }))}
+          sections={sections}
           takenSeatIds={takenSeatIds}
           mySeatIds={mySeatIds}
         />
