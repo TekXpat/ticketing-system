@@ -2,17 +2,15 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { ticketsLeftByType } from "@/lib/events/availability";
-import { EVENT_KINDS } from "@/lib/events/schemas";
+import { GATES } from "@/lib/tickets/gates";
 
 // Events change often, so build this page fresh on every visit.
 export const dynamic = "force-dynamic";
 
 const FILTERS = [
   { value: "all", label: "All" },
-  { value: "bus", label: "Buses" },
-  { value: "concert", label: "Concerts" },
-  { value: "conference", label: "Conferences" },
-] as const;
+  ...GATES.map((gate) => ({ value: gate.kind, label: gate.label })),
+];
 
 // Public page: anyone can see the list of events.
 export default async function EventsPage({
@@ -21,11 +19,11 @@ export default async function EventsPage({
   searchParams: Promise<{ kind?: string }>;
 }) {
   const { kind } = await searchParams;
-  // Anything that is not one of the three kinds means "All".
-  const active = EVENT_KINDS.find((item) => item === kind);
+  // Anything that is not a known kind means "All".
+  const active = GATES.find((gate) => gate.kind === kind)?.kind;
 
   const user = await getCurrentUser();
-  const canCreate = user?.role === "ORGANISER";
+  const isOrganiser = user?.role === "ORGANISER";
 
   const events = await db.event.findMany({
     where: active ? { kind: active } : undefined,
@@ -55,7 +53,7 @@ export default async function EventsPage({
           })}
         </nav>
 
-        {canCreate ? (
+        {isOrganiser ? (
           <Link href="/events/new" className="btn btn-primary">
             Create a ticket
           </Link>
@@ -108,10 +106,15 @@ export default async function EventsPage({
                 })}
               </ul>
 
-              <div className="mt-auto">
+              <div className="mt-auto flex flex-wrap gap-2">
                 <Link href={`/events/${event.id}`} className="btn btn-primary">
                   {event.seatLayoutId ? "Choose seats" : "Buy tickets"}
                 </Link>
+                {isOrganiser && event.organiserId === user?.id ? (
+                  <Link href={`/events/${event.id}/edit`} className="btn btn-outline">
+                    Edit
+                  </Link>
+                ) : null}
               </div>
             </li>
           ))}
