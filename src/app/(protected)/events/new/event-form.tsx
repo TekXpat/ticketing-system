@@ -5,6 +5,8 @@ import { createEvent, type CreateEventState } from "@/lib/events/actions";
 
 const KINDS = [
   { value: "bus", label: "Bus" },
+  { value: "flight", label: "Flight" },
+  { value: "theatre", label: "Theatre" },
   { value: "concert", label: "Concert" },
   { value: "conference", label: "Conference" },
 ] as const;
@@ -12,8 +14,21 @@ const KINDS = [
 type Kind = (typeof KINDS)[number]["value"];
 type Row = { name: string; price: string; quantity: string; maxPerCustomer: string };
 
-const DEFAULT_CAPACITY: Record<Kind, number> = { bus: 20, concert: 100, conference: 100 };
-const PRESETS: Record<Kind, number[]> = { bus: [20], concert: [100, 1000], conference: [100, 500] };
+const SEATED: Kind[] = ["bus", "flight", "theatre"];
+const DEFAULT_CAPACITY: Record<Kind, number> = {
+  bus: 20,
+  flight: 120,
+  theatre: 150,
+  concert: 100,
+  conference: 100,
+};
+const PRESETS: Record<Kind, number[]> = {
+  bus: [20, 30],
+  flight: [60, 120],
+  theatre: [100, 200],
+  concert: [100, 1000],
+  conference: [100, 500],
+};
 const MAX_ROWS = 10;
 
 const emptyRow = (): Row => ({ name: "", price: "", quantity: "", maxPerCustomer: "" });
@@ -43,21 +58,22 @@ export default function EventForm() {
   const [capacity, setCapacity] = useState(String(DEFAULT_CAPACITY.bus));
   const [rows, setRows] = useState<Row[]>([emptyRow()]);
 
-  const isBus = kind === "bus";
+  const seated = SEATED.includes(kind);
+  // With one ticket type on a seated event, every seat belongs to it.
+  const single = seated && rows.length === 1;
   const capacityNumber = Number(capacity) || 0;
-  // A bus sells every seat as one ticket type, so it is always fully allocated.
-  const allocated = isBus
+  const allocated = single
     ? capacityNumber
     : rows.reduce((sum, row) => sum + (Number(row.quantity) || 0), 0);
   const left = capacityNumber - allocated;
+  // Standing events may leave places unallocated. Seated events must assign every seat.
+  const blocked = left < 0 || (seated && left !== 0);
 
   const smallButton = "btn btn-outline btn-small";
 
   function changeKind(next: Kind) {
     setKind(next);
     setCapacity(String(DEFAULT_CAPACITY[next]));
-    // A bus has a single ticket type.
-    if (next === "bus") setRows((previous) => previous.slice(0, 1));
   }
 
   function updateRow(index: number, patch: Partial<Row>) {
@@ -78,10 +94,18 @@ export default function EventForm() {
     rows.map((row) => ({
       name: row.name,
       price: row.price === "" ? null : Number(row.price),
-      quantity: isBus ? capacityNumber : row.quantity === "" ? null : Number(row.quantity),
+      quantity: single ? capacityNumber : row.quantity === "" ? null : Number(row.quantity),
       maxPerCustomer: row.maxPerCustomer === "" ? null : Number(row.maxPerCustomer),
     })),
   );
+
+  const status = seated
+    ? `${capacityNumber} seats · assigned ${allocated} · ${
+        left > 0 ? `${left} still to assign` : left < 0 ? `${-left} too many` : "all seats assigned"
+      }`
+    : `Capacity ${capacityNumber} · allocated ${allocated} · ${
+        left >= 0 ? `${left} left to allocate` : `${-left} over the capacity`
+      }`;
 
   return (
     <section className="mx-auto max-w-xl space-y-6">
@@ -151,7 +175,7 @@ export default function EventForm() {
 
         <div className="space-y-1">
           <label htmlFor="capacity" className="block text-sm font-medium">
-            {isBus ? "Number of seats" : "Total capacity (people)"}
+            {seated ? "Number of seats" : "Total capacity (people)"}
           </label>
           <input
             id="capacity"
@@ -178,12 +202,15 @@ export default function EventForm() {
         </div>
 
         <h2 className="border-line border-t pt-4 text-xl font-semibold">
-          {isBus ? "Ticket" : "Ticket types"}
+          {seated ? "Seat groups and prices" : "Ticket types"}
         </h2>
-        <p className={`text-sm font-medium ${left < 0 ? "text-danger" : "text-muted"}`}>
-          Capacity {capacityNumber} · allocated {allocated} ·{" "}
-          {left >= 0 ? `${left} left to allocate` : `${-left} over the capacity`}
-        </p>
+        {seated ? (
+          <p className="text-muted text-sm">
+            One group sells every seat at one price. Add groups (for example Business and Economy)
+            and give each group its own price and number of seats.
+          </p>
+        ) : null}
+        <p className={`text-sm font-medium ${blocked ? "text-danger" : "text-muted"}`}>{status}</p>
 
         {rows.map((row, index) => (
           <fieldset
@@ -191,7 +218,7 @@ export default function EventForm() {
             className="border-line bg-surface-2 space-y-3 rounded-lg border p-3"
           >
             <legend className="px-1 text-sm font-semibold">
-              {isBus ? "Ticket" : `Ticket type ${index + 1}`}
+              {seated ? `Seat group ${index + 1}` : `Ticket type ${index + 1}`}
             </legend>
             <div className="space-y-1">
               <label htmlFor={`name-${index}`} className="block text-sm font-medium">
@@ -218,10 +245,10 @@ export default function EventForm() {
                 className="input"
               />
             </div>
-            {isBus ? null : (
+            {single ? null : (
               <div className="space-y-1">
                 <label htmlFor={`quantity-${index}`} className="block text-sm font-medium">
-                  Quantity
+                  {seated ? "Seats in this group" : "Quantity"}
                 </label>
                 <input
                   id={`quantity-${index}`}
@@ -246,7 +273,7 @@ export default function EventForm() {
                 className="input"
               />
             </div>
-            {isBus ? null : (
+            {single ? null : (
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -272,21 +299,19 @@ export default function EventForm() {
 
         <FieldError messages={errors.ticketTypes} />
 
-        {isBus ? null : (
-          <button
-            type="button"
-            className={smallButton}
-            disabled={left <= 0 || rows.length >= MAX_ROWS}
-            onClick={() => setRows((previous) => [...previous, emptyRow()])}
-          >
-            + Add another ticket type
-          </button>
-        )}
+        <button
+          type="button"
+          className={smallButton}
+          disabled={(!seated && left <= 0) || rows.length >= MAX_ROWS}
+          onClick={() => setRows((previous) => [...previous, emptyRow()])}
+        >
+          {seated ? "+ Add another seat group" : "+ Add another ticket type"}
+        </button>
 
         <input type="hidden" name="ticketTypes" value={payload} />
 
         <div>
-          <button type="submit" disabled={pending || left < 0} className="btn btn-primary">
+          <button type="submit" disabled={pending || blocked} className="btn btn-primary">
             {pending ? "Saving…" : "Create event"}
           </button>
         </div>

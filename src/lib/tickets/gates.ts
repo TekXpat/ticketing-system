@@ -3,6 +3,8 @@ export const GATES = [
   { slug: "buses", kind: "bus", label: "Buses" },
   { slug: "concerts", kind: "concert", label: "Concerts" },
   { slug: "conferences", kind: "conference", label: "Conferences" },
+  { slug: "flights", kind: "flight", label: "Flights" },
+  { slug: "theatres", kind: "theatre", label: "Theatres" },
 ] as const;
 
 export type Gate = (typeof GATES)[number];

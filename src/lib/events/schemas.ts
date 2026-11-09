@@ -1,10 +1,16 @@
 import { z } from "zod";
 
-export const EVENT_KINDS = ["bus", "concert", "conference"] as const;
+export const SEATED_KINDS = ["bus", "flight", "theatre"] as const;
+export const EVENT_KINDS = [...SEATED_KINDS, "concert", "conference"] as const;
 export type EventKind = (typeof EVENT_KINDS)[number];
+export type SeatedKind = (typeof SEATED_KINDS)[number];
 
-// A bus seat grid has one button per seat, so keep it a sensible size.
-export const MAX_BUS_SEATS = 100;
+export function isSeatedKind(kind: string): kind is SeatedKind {
+  return (SEATED_KINDS as readonly string[]).includes(kind);
+}
+
+// A seat grid has one button per seat, so keep each size sensible.
+export const MAX_SEATS: Record<SeatedKind, number> = { bus: 100, flight: 200, theatre: 300 };
 
 const ticketTypeSchema = z.object({
   // A blank name means "no special tier": everyone pays the same, so Regular.
@@ -28,7 +34,7 @@ const ticketTypeSchema = z.object({
 export const createEventSchema = z
   .object({
     title: z.string().trim().min(1, { error: "Enter a title." }).max(150),
-    kind: z.enum(EVENT_KINDS, { error: "Choose bus, concert or conference." }),
+    kind: z.enum(EVENT_KINDS, { error: "Choose a kind from the list." }),
     location: z.string().trim().max(150).optional(),
     startsAt: z.coerce.date({ error: "Enter a valid date and time." }),
     capacity: z.coerce
@@ -42,25 +48,42 @@ export const createEventSchema = z
       .max(10, { error: "At most 10 ticket types." }),
   })
   .superRefine((event, ctx) => {
-    if (event.kind === "bus") {
-      if (event.capacity > MAX_BUS_SEATS) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["capacity"],
-          message: `A bus can have at most ${MAX_BUS_SEATS} seats.`,
-        });
-      }
-      if (event.ticketTypes.length > 1) {
+    const total = event.ticketTypes.reduce((sum, type) => sum + type.quantity, 0);
+
+    const names = new Set<string>();
+    for (const type of event.ticketTypes) {
+      const key = type.name.toLowerCase();
+      if (names.has(key)) {
         ctx.addIssue({
           code: "custom",
           path: ["ticketTypes"],
-          message: "A bus has one ticket type for now.",
+          message: `Two ticket types are called "${type.name}". Give each its own name.`,
+        });
+        break;
+      }
+      names.add(key);
+    }
+
+    if (isSeatedKind(event.kind)) {
+      const max = MAX_SEATS[event.kind];
+      if (event.capacity > max) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["capacity"],
+          message: `A ${event.kind} can have at most ${max} seats.`,
+        });
+      }
+      // Every seat belongs to exactly one ticket type.
+      if (total !== event.capacity) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["ticketTypes"],
+          message: `Seat groups add up to ${total}, but there are ${event.capacity} seats. Assign every seat.`,
         });
       }
       return;
     }
 
-    const total = event.ticketTypes.reduce((sum, type) => sum + type.quantity, 0);
     if (total > event.capacity) {
       ctx.addIssue({
         code: "custom",
