@@ -71,13 +71,15 @@ describe("buying and using a ticket, end to end", () => {
   });
 
   afterAll(async () => {
+    // Orders point at ticket types, so they must go before the events do.
+    await db.order.deleteMany({ where: { eventId: { in: [busEventId, concertEventId] } } });
+    await db.seatReservation.deleteMany({ where: { eventId: busEventId } });
     await db.event.deleteMany({ where: { id: { in: [busEventId, concertEventId] } } });
     await db.seatLayout.delete({ where: { id: layoutId } });
     await db.user.delete({ where: { id: userId } });
     vi.unstubAllEnvs();
     await db.$disconnect();
   });
-
   it("bus: hold a seat, order with a name, pay, and scan the ticket once", async () => {
     const hold = await holdSeatForUser(userId, busEventId, seatId);
     expect(hold.ok).toBe(true);
