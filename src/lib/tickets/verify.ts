@@ -12,13 +12,18 @@ type TicketDetails = {
 export type VerifyResult =
   | { status: "invalid" }
   | { status: "wrong_gate"; ticketGate: string; gate: string }
+  | { status: "wrong_event"; ticketEvent: string }
   | ({ status: "valid" } & TicketDetails)
   | ({ status: "already_used"; usedAt: string } & TicketDetails);
 
-// Checks a ticket code at one gate and marks the ticket as used.
+// Checks a ticket code at one gate, for one event, and marks the ticket as used.
 // The type, seat and name shown come from the database row, so a holder cannot
 // present a standard ticket as VIP or change the name.
-export async function verifyAndUseTicket(code: string, gate: Gate): Promise<VerifyResult> {
+export async function verifyAndUseTicket(
+  code: string,
+  gate: Gate,
+  eventId: string,
+): Promise<VerifyResult> {
   const parsed = parseTicketCode(code);
   if (!parsed) return { status: "invalid" };
 
@@ -35,8 +40,8 @@ export async function verifyAndUseTicket(code: string, gate: Gate): Promise<Veri
   if (!ticket) return { status: "invalid" };
   if (!isGenuineTicketCode(code, ticket)) return { status: "invalid" };
 
-  // Wrong category: refuse BEFORE touching the ticket, so it stays unused and
-  // can still be scanned at the right gate.
+  // Wrong category or wrong event: refuse BEFORE touching the ticket, so it
+  // stays unused and can still be scanned at the right place.
   const ticketGate = gateForKind(ticket.event.kind);
   if (ticketGate?.slug !== gate.slug) {
     return {
@@ -44,6 +49,9 @@ export async function verifyAndUseTicket(code: string, gate: Gate): Promise<Veri
       ticketGate: ticketGate?.label ?? ticket.event.kind,
       gate: gate.label,
     };
+  }
+  if (ticket.eventId !== eventId) {
+    return { status: "wrong_event", ticketEvent: ticket.event.title };
   }
 
   const details: TicketDetails = {
