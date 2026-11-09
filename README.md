@@ -18,11 +18,11 @@ make seed    # create the demo accounts
 
 Open http://localhost:3000.
 
-| Account               | Password      | Role                                             |
-| --------------------- | ------------- | ------------------------------------------------ |
-| `demo@example.com`    | `password123` | Organiser: creates events, dashboard, all gates  |
-| `staff@example.com`   | `password123` | Gate staff: gates only                           |
-| any new sign-up       |               | Customer: browses and buys                       |
+| Account             | Password      | Role                                            |
+| ------------------- | ------------- | ----------------------------------------------- |
+| `demo@example.com`  | `password123` | Organiser: creates events, dashboard, all gates |
+| `staff@example.com` | `password123` | Gate staff: gates only                          |
+| any new sign-up     |               | Customer: browses and buys                      |
 
 To promote an account (there is no admin screen):
 `UPDATE users SET role = 'ORGANISER' WHERE email = 'you@example.com';`
@@ -42,11 +42,11 @@ To promote an account (there is no admin screen):
 
 ## The three hard problems
 
-| Problem                       | How it is solved                                                                                                                                                | Proof (tests)                                               |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Two people take the same seat | Unique rule on (event, seat), insert and catch the error. Standing stock: lock the ticket type rows in a fixed order and count. Holds are limited per customer.  | `hold.test.ts`, `create.test.ts`, `hold-limit.test.ts`      |
-| The payment callback arrives twice | A payment leaves PENDING exactly once (conditional update). A ticket exists once per order item. A late payment recounts stock under a lock.                | `settle.test.ts`, `settle-late.test.ts`                     |
-| Tickets must be hard to forge | Code is the ticket id plus an HMAC-SHA256 signature over id, type and seat. Type, seat and name shown at the gate come from the database. One conditional update marks it used. The gate checks category and event. | `sign.test.ts`, `verify.test.ts`, `purchase-flow.test.ts`   |
+| Problem                            | How it is solved                                                                                                                                                                                                    | Proof (tests)                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Two people take the same seat      | Unique rule on (event, seat), insert and catch the error. Standing stock: lock the ticket type rows in a fixed order and count. Holds are limited per customer.                                                     | `hold.test.ts`, `create.test.ts`, `hold-limit.test.ts`    |
+| The payment callback arrives twice | A payment leaves PENDING exactly once (conditional update). A ticket exists once per order item. A late payment recounts stock under a lock.                                                                        | `settle.test.ts`, `settle-late.test.ts`                   |
+| Tickets must be hard to forge      | Code is the ticket id plus an HMAC-SHA256 signature over id, type and seat. Type, seat and name shown at the gate come from the database. One conditional update marks it used. The gate checks category and event. | `sign.test.ts`, `verify.test.ts`, `purchase-flow.test.ts` |
 
 Why each choice, and what is unsure, is in [DECISIONS.md](DECISIONS.md).
 
