@@ -11,12 +11,12 @@ export async function settlePayment(
   providerRef: string,
   outcome: PaymentOutcome,
 ): Promise<SettleResult> {
-  return db.$transaction(async (tx) => {
+  return db.$transaction(async (tx): Promise<SettleResult> => {
     const payment = await tx.payment.findUnique({
       where: { providerRef },
       include: { order: { include: { items: true } } },
     });
-    if (!payment) return { ok: false, error: "Unknown payment." } satisfies SettleResult;
+    if (!payment) return { ok: false, error: "Unknown payment." };
 
     const target =
       outcome === "success" ? "CONFIRMED" : outcome === "failed" ? "FAILED" : "TIMED_OUT";
@@ -37,12 +37,16 @@ export async function settlePayment(
         duplicate: true,
         paymentStatus: current?.status ?? payment.status,
         ticketsIssued: 0,
-      } satisfies SettleResult;
+      };
     }
 
     const { order } = payment;
-    const done = (ticketsIssued: number) =>
-      ({ ok: true, duplicate: false, paymentStatus: target, ticketsIssued }) satisfies SettleResult;
+    const done = (ticketsIssued: number): SettleResult => ({
+      ok: true,
+      duplicate: false,
+      paymentStatus: target,
+      ticketsIssued,
+    });
 
     // The order was already closed another way: nothing more to do.
     if (order.status !== "PENDING") return done(0);
@@ -58,6 +62,17 @@ export async function settlePayment(
         },
       });
 
+    // A payment that cannot be honoured: close the order without tickets.
+    // The money was taken, so this needs a refund, which is out of scope.
+    const refuse = async (): Promise<SettleResult> => {
+      await tx.order.updateMany({
+        where: { id: order.id, status: "PENDING" },
+        data: { status: "FAILED" },
+      });
+      if (seatIds.length > 0) await releaseSeats();
+      return done(0);
+    };
+
     if (outcome !== "success") {
       await tx.order.updateMany({
         where: { id: order.id, status: "PENDING" },
@@ -65,6 +80,30 @@ export async function settlePayment(
       });
       if (seatIds.length > 0) await releaseSeats();
       return done(0);
+    }
+
+    // The payment may arrive after the order's time ran out, when someone else
+    // could already have bought the same stock. Lock the ticket types (in the
+    // same sorted order as create.ts, so there is no deadlock) and count again.
+    const typeIds = [...new Set(order.items.map((item) => item.ticketTypeId))].sort();
+    for (const id of typeIds) {
+      await tx.$queryRaw`SELECT id FROM ticket_types WHERE id = ${id} FOR UPDATE`;
+    }
+    const types = await tx.ticketType.findMany({
+      where: { id: { in: typeIds } },
+      select: { id: true, quantity: true },
+    });
+    const now = new Date();
+    for (const type of types) {
+      const mine = order.items.filter((item) => item.ticketTypeId === type.id).length;
+      const others = await tx.orderItem.count({
+        where: {
+          ticketTypeId: type.id,
+          orderId: { not: order.id },
+          order: { OR: [{ status: "PAID" }, { status: "PENDING", expiresAt: { gt: now } }] },
+        },
+      });
+      if (others + mine > type.quantity) return refuse();
     }
 
     if (seatIds.length > 0) {
@@ -78,16 +117,7 @@ export async function settlePayment(
           AND seat_id IN (${Prisma.join(seatIds)})
         FOR UPDATE`;
 
-      if (locked.length !== seatIds.length) {
-        // A seat was lost before the payment settled. Money was taken, so this
-        // needs a refund, which is out of scope. No tickets are issued.
-        await tx.order.updateMany({
-          where: { id: order.id, status: "PENDING" },
-          data: { status: "FAILED" },
-        });
-        await releaseSeats();
-        return done(0);
-      }
+      if (locked.length !== seatIds.length) return refuse();
 
       await tx.seatReservation.updateMany({
         where: { id: { in: locked.map((row) => row.id) } },
