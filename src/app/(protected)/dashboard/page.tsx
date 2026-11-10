@@ -89,8 +89,8 @@ export default async function DashboardPage() {
       <div className="space-y-1">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted">
-          Your events, grouped by category, so bus seats are never added to concert places. Sold
-          and revenue count paid orders only.
+          Your events, grouped by category, so bus seats are never added to concert places. Sold and
+          revenue count paid orders only.
         </p>
       </div>
 
