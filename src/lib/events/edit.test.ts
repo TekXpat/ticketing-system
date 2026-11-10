@@ -63,18 +63,8 @@ describe("editing and deleting events", () => {
   });
 
   afterAll(async () => {
-    // Orders point at the ticket types, so the database refuses to delete an
-    // event until its tickets, payments, order items and orders are gone.
-    const orders = await db.order.findMany({
-      where: { eventId: { in: eventIds } },
-      select: { id: true },
-    });
-    const orderIds = orders.map((order) => order.id);
-
-    await db.ticket.deleteMany({ where: { eventId: { in: eventIds } } });
-    await db.payment.deleteMany({ where: { orderId: { in: orderIds } } });
-    await db.orderItem.deleteMany({ where: { orderId: { in: orderIds } } });
-    await db.order.deleteMany({ where: { id: { in: orderIds } } });
+    // Orders point at ticket types, so they go before the events.
+    await db.order.deleteMany({ where: { eventId: { in: eventIds } } });
     await db.event.deleteMany({ where: { id: { in: eventIds } } });
     await db.user.deleteMany({ where: { id: { in: [organiserId, otherId, customerId] } } });
     await db.$disconnect();
