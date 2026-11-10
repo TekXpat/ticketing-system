@@ -111,8 +111,8 @@ export function EditForm({
 
         <h2 className="border-line border-t pt-4 text-xl font-semibold">Ticket types</h2>
         <p className="text-muted text-sm">
-          A new price applies to new orders only. A quantity cannot go below what is already sold or
-          reserved. The number of seats of a seated ticket cannot change.
+          A new price applies to new orders only. A quantity cannot go below what is already sold
+          or reserved. The number of seats of a seated ticket cannot change.
         </p>
 
         {rows.map((row, index) => {
