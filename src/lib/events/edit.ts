@@ -38,8 +38,9 @@ export async function updateEventForOrganiser(
     const names = new Set<string>();
     for (const change of input.ticketTypes) {
       const key = change.name.toLowerCase();
-      if (names.has(key))
+      if (names.has(key)) {
         return { ok: false, error: `Two ticket types are called "${change.name}".` };
+      }
       names.add(key);
     }
 
@@ -101,12 +102,13 @@ export async function deleteEventForOrganiser(
 
   const busy = await db.order.count({ where: { eventId, ...activeOrder(new Date()) } });
   if (busy > 0) {
-    return {
-      ok: false,
-      error: "This event has sold or reserved tickets, so it cannot be deleted.",
-    };
+    return { ok: false, error: "This event has sold or reserved tickets, so it cannot be deleted." };
   }
 
-  await db.event.delete({ where: { id: eventId } });
+  // Old failed or expired orders point at the ticket types, so they go first.
+  await db.$transaction([
+    db.order.deleteMany({ where: { eventId } }),
+    db.event.delete({ where: { id: eventId } }),
+  ]);
   return { ok: true };
 }
