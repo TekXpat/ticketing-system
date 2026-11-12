@@ -167,3 +167,21 @@ and never hard-coded colours.
 - Totals are per category, never across categories, so seats and standing places are never
   added together. The dashboard is for an organiser deciding where to push sales and whether
   a gate is keeping up.
+
+## 18. Scheduled expiry
+
+- The page-load sweep stays, and `POST /api/maintenance/expire` runs the same sweep so a
+  scheduler can call it. It reuses PAYMENT_CALLBACK_SECRET instead of adding a new secret.
+  Weakness: one secret now guards two endpoints, and the endpoint does a database sweep, so a
+  leaked secret also lets someone trigger sweeps. A separate secret and a rate limit would be
+  better.
+- Nothing in the repository schedules the call. That needs a host (cron or a hosting cron job),
+  so the README shows the command instead of pretending it runs.
+
+## 19. Process, honestly
+
+- PR #5 and PR #19 went straight into main instead of dev, and #11 carried 59 commits from
+  seven stacked branches. After the assessment I split the fixes into one small PR each, and
+  `dev` was merged into `main` through one release PR.
+- Some commits share timestamps because I committed after finishing a group of files. I should
+  have committed as I went.
