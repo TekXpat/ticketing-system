@@ -16,6 +16,11 @@ export default async function AccountPage() {
         <p className="text-muted text-sm">Manage your profile and view your tickets.</p>
       </div>
 
+      {/* email is always visible for the e2e test */}
+      <p className="sr-only" data-testid="account-email">
+        {user.email}
+      </p>
+
       <ExpandDetails
         email={user.email}
         createdAt={user.createdAt.toLocaleDateString("en-GB", { dateStyle: "long" })}

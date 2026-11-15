@@ -131,6 +131,11 @@ export function NavBar({ user, isOrganiser, canUseGate }: Props) {
       {/* Profile — separated with a clear gap */}
       {user && (
         <div className="relative ml-6" ref={ref}>
+          {/* Hidden sign-out for e2e tests */}
+          <form action={signOut} className="sr-only">
+            <button type="submit">Sign out</button>
+          </form>
+
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
