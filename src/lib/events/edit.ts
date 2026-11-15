@@ -2,30 +2,37 @@ import { db } from "@/lib/db";
 
 export type EditResult = { ok: true } | { ok: false; error: string };
 
+type UpdateInput = {
+  title: string;
+  startsAt: Date;
+  ticketTypes: {
+    id?: string;
+    name: string;
+    price: number;
+    quantity: number;
+    maxPerCustomer?: number | null;
+  }[];
+  kind?: string;
+  location?: string;
+};
+
 // Update an event's metadata and ticket type prices/quantities.
 // Rules:
 //   - Only the event's organiser may edit it.
-//   - Standing quantity cannot go below what is already sold.
+//   - Standing quantity cannot go below what is already sold or reserved.
 //   - Seated events: seat count is fixed (the grid does not change).
 //   - Price changes apply to new orders only (existing order items keep their price).
-export async function updateEvent(
-  eventId: string,
+export async function updateEventForOrganiser(
   organiserId: string,
-  data: {
-    title: string;
-    kind: string;
-    location?: string;
-    startsAt: Date;
-    ticketTypes: { id?: string; name: string; price: number; quantity: number }[];
-  },
+  eventId: string,
+  data: UpdateInput,
 ): Promise<EditResult> {
   const event = await db.event.findUnique({
-    where: { id: eventId },
+    where: { id: eventId, organiserId },
     include: { ticketTypes: true },
   });
 
   if (!event) return { ok: false, error: "Event not found." };
-  if (event.organiserId !== organiserId) return { ok: false, error: "Not your event." };
 
   // Check quantity floors for existing types.
   for (const incoming of data.ticketTypes) {
@@ -34,37 +41,36 @@ export async function updateEvent(
     if (!existing) continue;
 
     if (existing.seated) {
-      // Seated: quantity is locked to the layout size.
       if (incoming.quantity !== existing.quantity) {
         return { ok: false, error: `Seat count for "${existing.name}" cannot change.` };
       }
     } else {
-      // Standing: cannot go below sold.
-      const sold = await db.orderItem.count({
-        where: { ticketTypeId: existing.id, order: { status: "PAID" } },
+      const soldOrReserved = await db.orderItem.count({
+        where: {
+          ticketTypeId: existing.id,
+          order: { status: { in: ["PAID", "PENDING"] } },
+        },
       });
-      if (incoming.quantity < sold) {
+      if (incoming.quantity < soldOrReserved) {
         return {
           ok: false,
-          error: `"${existing.name}" has ${sold} sold — quantity cannot go below that.`,
+          error: `"${existing.name}" already sold or reserved ${soldOrReserved} — quantity cannot go below that.`,
         };
       }
     }
   }
 
   await db.$transaction(async (tx) => {
-    // Update event metadata.
     await tx.event.update({
       where: { id: eventId },
       data: {
         title: data.title,
-        kind: data.kind,
-        location: data.location ?? null,
+        kind: data.kind ?? event.kind,
+        location: data.location ?? event.location,
         startsAt: data.startsAt,
       },
     });
 
-    // Upsert each ticket type.
     for (const type of data.ticketTypes) {
       if (type.id) {
         await tx.ticketType.update({
@@ -91,19 +97,26 @@ export async function updateEvent(
 // Delete an event.
 // Rules:
 //   - Only the organiser may delete.
-//   - If any PAID order exists, refuse (preserve ticket records).
-export async function deleteEvent(eventId: string, organiserId: string): Promise<EditResult> {
+//   - If any PAID or PENDING order exists, refuse.
+export async function deleteEventForOrganiser(
+  organiserId: string,
+  eventId: string,
+): Promise<EditResult> {
   const event = await db.event.findUnique({
-    where: { id: eventId },
-    include: { orders: { where: { status: "PAID" }, take: 1 } },
+    where: { id: eventId, organiserId },
+    include: {
+      orders: {
+        where: { status: { in: ["PAID", "PENDING"] } },
+        take: 1,
+      },
+    },
   });
 
   if (!event) return { ok: false, error: "Event not found." };
-  if (event.organiserId !== organiserId) return { ok: false, error: "Not your event." };
   if (event.orders.length > 0) {
     return {
       ok: false,
-      error: "This event has paid orders. Cancel all orders before deleting.",
+      error: "This event has active orders. Cancel all orders before deleting.",
     };
   }
 

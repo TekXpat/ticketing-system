@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOrganiser } from "@/lib/auth/session";
-import { updateEvent, deleteEvent } from "./edit";
+import { updateEventForOrganiser, deleteEventForOrganiser } from "./edit";
 import { updateEventSchema } from "./update-schema";
 
 export type EditEventState = {
@@ -32,7 +32,7 @@ export async function editEvent(
     return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   }
 
-  const result = await updateEvent(eventId, organiser.id, parsed.data);
+  const result = await updateEventForOrganiser(organiser.id, eventId, parsed.data);
   if (!result.ok) return { error: result.error };
 
   redirect("/dashboard");
@@ -40,7 +40,7 @@ export async function editEvent(
 
 export async function removeEvent(eventId: string): Promise<EditEventState> {
   const organiser = await requireOrganiser();
-  const result = await deleteEvent(eventId, organiser.id);
+  const result = await deleteEventForOrganiser(organiser.id, eventId);
   if (!result.ok) return { error: result.error };
   redirect("/dashboard");
 }
