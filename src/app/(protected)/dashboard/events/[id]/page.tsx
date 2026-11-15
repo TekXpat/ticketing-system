@@ -32,7 +32,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           ← Back to Dashboard
         </Link>
         <h1 className="text-3xl font-bold">{event.title}</h1>
-        <p className="text-muted text-sm">
+        <p className="text-muted text-sm capitalize">
           {event.kind} ·{" "}
           {event.startsAt.toLocaleString("en-GB", {
             dateStyle: "long",
@@ -41,86 +41,87 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
         </p>
       </div>
 
-      {/* Summary cards */}
+      {/* Summary cards — same style as dashboard */}
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
-          <li key={card.label} className="card space-y-1">
-            <p className="text-muted text-sm">{card.label}</p>
-            <p className="text-2xl font-bold">{card.value}</p>
+          <li key={card.label} className="card flex items-center gap-4">
+            <div>
+              <p className="text-muted text-xs">{card.label}</p>
+              <p className="text-xl leading-tight font-bold">{card.value}</p>
+            </div>
           </li>
         ))}
       </ul>
 
       {/* Sales progress */}
       <div className="card space-y-3">
-        <h2 className="font-semibold">Sales Progress</h2>
-        <div className="flex items-center gap-3">
-          <div className="flex-1">
-            <ProgressBar value={pct} label={`${event.title} sales progress`} />
-          </div>
-          <span className="text-muted w-24 text-right text-sm">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Sales Progress</h2>
+          <span className="text-muted text-sm">
             {pct}% ({n(event.sold)} of {n(event.quantity)})
           </span>
         </div>
+        <ProgressBar value={pct} label={`${event.title} sales progress`} />
       </div>
 
-      {/* Ticket breakdown */}
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Ticket Breakdown</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-line border-b">
-                <th className="py-2 pr-4 font-medium">Ticket Type</th>
-                <th className="py-2 pr-4 text-right font-medium">Sold</th>
-                <th className="py-2 pr-4 text-right font-medium">Left</th>
-                <th className="py-2 text-right font-medium">Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              {event.types.map((type) => (
-                <tr key={type.id} className="border-line border-t">
-                  <td className="py-2 pr-4 font-medium">{type.name}</td>
-                  <td className="py-2 pr-4 text-right">
-                    {n(type.sold)} of {n(type.quantity)}
-                  </td>
-                  <td className="py-2 pr-4 text-right">
-                    {n(Math.max(0, type.quantity - type.sold))}
-                  </td>
-                  <td className="py-2 text-right">{n(type.revenue)} RWF</td>
+      {/* Ticket breakdown + Event information side by side on wide screens */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="card space-y-3">
+          <h2 className="font-semibold">Ticket Breakdown</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-line border-b">
+                  <th className="py-2 pr-4 font-medium">Ticket Type</th>
+                  <th className="py-2 pr-4 text-right font-medium">Sold</th>
+                  <th className="py-2 pr-4 text-right font-medium">Left</th>
+                  <th className="py-2 text-right font-medium">Revenue</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {event.types.map((type) => (
+                  <tr key={type.id} className="border-line border-t">
+                    <td className="py-2 pr-4 font-medium">{type.name}</td>
+                    <td className="py-2 pr-4 text-right">
+                      {n(type.sold)} of {n(type.quantity)}
+                    </td>
+                    <td className="py-2 pr-4 text-right">
+                      {n(Math.max(0, type.quantity - type.sold))}
+                    </td>
+                    <td className="py-2 text-right">{n(type.revenue)} RWF</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {/* Event information */}
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Event Information</h2>
-        <dl className="space-y-2 text-sm">
-          <div className="flex gap-2">
-            <dt className="text-muted w-32 shrink-0">Category</dt>
-            <dd className="font-medium capitalize">{event.kind}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-muted w-32 shrink-0">Date &amp; Time</dt>
-            <dd className="font-medium">
-              {event.startsAt.toLocaleString("en-GB", {
-                dateStyle: "long",
-                timeStyle: "short",
-              })}
-            </dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-muted w-32 shrink-0">Total Capacity</dt>
-            <dd className="font-medium">{n(event.quantity)}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="text-muted w-32 shrink-0">Ticket Types</dt>
-            <dd className="font-medium">{event.types.map((t) => t.name).join(", ")}</dd>
-          </div>
-        </dl>
+        <div className="card space-y-3">
+          <h2 className="font-semibold">Event Information</h2>
+          <dl className="space-y-2 text-sm">
+            <div className="flex gap-2">
+              <dt className="text-muted w-32 shrink-0">Category</dt>
+              <dd className="font-medium capitalize">{event.kind}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-muted w-32 shrink-0">Date &amp; Time</dt>
+              <dd className="font-medium">
+                {event.startsAt.toLocaleString("en-GB", {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                })}
+              </dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-muted w-32 shrink-0">Total Capacity</dt>
+              <dd className="font-medium">{n(event.quantity)}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-muted w-32 shrink-0">Ticket Types</dt>
+              <dd className="font-medium">{event.types.map((t) => t.name).join(", ")}</dd>
+            </div>
+          </dl>
+        </div>
       </div>
 
       {/* Actions */}

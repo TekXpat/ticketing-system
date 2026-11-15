@@ -15,11 +15,11 @@
   --line: #c4cddc;
   --ink: #101828;
   --muted: #475467;
-  --accent: #1d4ed8;
-  --accent-hover: #1e40af;
+  --accent: #285bc1;
+  --accent-hover: #1e4a9e;
   --on-accent: #ffffff;
-  --link: #1d4ed8;
-  --focus: #1d4ed8;
+  --link: #285bc1;
+  --focus: #285bc1;
   --success: #166534;
   --success-bg: #dcfce7;
   --danger: #991b1b;
@@ -38,11 +38,11 @@
   --line: #3d4350;
   --ink: #f2f4f7;
   --muted: #b3bac6;
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
+  --accent: #285bc1;
+  --accent-hover: #1e4a9e;
   --on-accent: #ffffff;
-  --link: #8ab8ff;
-  --focus: #8ab8ff;
+  --link: #7aa3e0;
+  --focus: #7aa3e0;
   --success: #86efac;
   --success-bg: #12301e;
   --danger: #fca5a5;
@@ -97,6 +97,9 @@
   }
   .btn-primary {
     @apply bg-brand text-on-brand hover:bg-brand-hover;
+  }
+  .btn-secondary {
+    @apply border-line bg-surface text-ink hover:bg-surface-2 border;
   }
   .btn-light {
     @apply bg-surface-2 text-brand-soft hover:bg-line;
