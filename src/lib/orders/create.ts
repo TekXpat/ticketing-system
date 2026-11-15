@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import type { CreateOrderInput } from "./schemas";
 
@@ -42,6 +43,10 @@ export async function createOrderForUser(
       where: { id: { in: typeIds }, eventId: input.eventId },
     });
     const byId = new Map(ticketTypes.map((type) => [type.id, type]));
+    const event = await tx.event.findUnique({
+      where: { id: input.eventId },
+      select: { seatLayoutId: true },
+    });
 
     const rows: Row[] = [];
     const seatIds: string[] = [];
@@ -52,21 +57,42 @@ export async function createOrderForUser(
       if (!type) return fail("That ticket type does not belong to this event.");
 
       if (type.saleStartsAt && type.saleStartsAt > now) {
-        return fail(`${type.name} is not on sale yet.`);
+        return fail(`Tickets of type "${type.name}" are not on sale yet.`);
       }
       if (type.saleEndsAt && type.saleEndsAt < now) {
-        return fail(`${type.name} is no longer on sale.`);
+        return fail(`Tickets of type "${type.name}" are no longer on sale.`);
       }
 
       const wanted = item.seatIds ? item.seatIds.length : (item.quantity ?? 0);
-      if (item.seatIds && !type.seated) return fail(`${type.name} has no assigned seats.`);
-      if (!item.seatIds && type.seated) return fail(`Choose seats for ${type.name}.`);
+      if (item.seatIds && !type.seated) {
+        return fail(`Tickets of type "${type.name}" have no assigned seats.`);
+      }
+      if (!item.seatIds && type.seated) {
+        return fail(`Choose seats for tickets of type "${type.name}".`);
+      }
       if (item.seatIds && new Set(item.seatIds).size !== item.seatIds.length) {
         return fail("A seat was listed twice.");
       }
       // When names are given there must be exactly one per ticket.
       if (item.holderNames && item.holderNames.length !== wanted) {
         return fail("Enter one name for every ticket.");
+      }
+
+      // NEW: every seat must be in this event's layout and in the section that
+      // this ticket type sells (old events have section "main" on both sides).
+      if (item.seatIds) {
+        const seats = await tx.seat.findMany({
+          where: { id: { in: item.seatIds } },
+          select: { label: true, layoutId: true, section: true },
+        });
+        if (
+          seats.length !== item.seatIds.length ||
+          seats.some((s) => s.layoutId !== event?.seatLayoutId)
+        ) {
+          return fail("One of these seats does not exist for this event.");
+        }
+        const wrong = seats.find((s) => s.section !== (type.section ?? "main"));
+        if (wrong) return fail(`Seat ${wrong.label} is not sold as "${type.name}" tickets.`);
       }
 
       // Stock in use: paid orders, plus unpaid orders that have not expired.
@@ -76,14 +102,16 @@ export async function createOrderForUser(
       const taken = await tx.orderItem.count({
         where: { ticketTypeId: type.id, order: activeOrder },
       });
-      if (taken + wanted > type.quantity) return fail(`Not enough ${type.name} tickets left.`);
+      if (taken + wanted > type.quantity) {
+        return fail(`Not enough tickets left of type "${type.name}".`);
+      }
 
       if (type.maxPerCustomer !== null) {
         const mine = await tx.orderItem.count({
           where: { ticketTypeId: type.id, order: { userId, ...activeOrder } },
         });
         if (mine + wanted > type.maxPerCustomer) {
-          return fail(`You can buy at most ${type.maxPerCustomer} ${type.name} tickets.`);
+          return fail(`You can buy at most ${type.maxPerCustomer} tickets of type "${type.name}".`);
         }
       }
 
@@ -111,6 +139,32 @@ export async function createOrderForUser(
     }
 
     if (seatIds.length > 0) {
+      // Lock this user's hold rows, so two checkouts started at the same moment
+      // cannot both take the same seat.
+      await tx.$queryRaw`
+        SELECT id FROM seat_reservations
+        WHERE event_id = ${input.eventId}
+          AND user_id = ${userId}
+          AND seat_id IN (${Prisma.join(seatIds)})
+        ORDER BY id
+        FOR UPDATE`;
+
+      // A seat that is already in another order must not be charged again.
+      const alreadyOrdered = await tx.orderItem.count({
+        where: {
+          seatId: { in: seatIds },
+          order: {
+            eventId: input.eventId,
+            OR: [{ status: "PAID" }, { status: "PENDING", expiresAt: { gt: now } }],
+          },
+        },
+      });
+      if (alreadyOrdered > 0) {
+        return fail(
+          "One of these seats is already in another order. Pay or cancel that order first.",
+        );
+      }
+
       // Every seat must be held by this user, and the hold must still be alive.
       const holds = await tx.seatReservation.findMany({
         where: {

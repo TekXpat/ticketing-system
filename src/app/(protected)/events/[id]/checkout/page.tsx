@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { expireOverdueOrders } from "@/lib/payments/expire";
 import { cancelHolds } from "@/lib/seats/actions";
+import { myUnpaidOrders, seatsReadyToCheckOut } from "@/lib/seats/mine";
 import { CheckoutForm } from "./checkout-form";
 
 export const dynamic = "force-dynamic";
@@ -15,16 +16,14 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
 
   const event = await db.event.findUnique({
     where: { id },
-    include: { ticketTypes: { where: { seated: true }, orderBy: { price: "asc" } } },
+    include: { ticketTypes: { where: { seated: true } } },
   });
   if (!event) notFound();
-  const ticketType = event.ticketTypes[0];
+  const byKey = new Map(event.ticketTypes.map((type) => [type.section ?? "main", type]));
 
-  const holds = await db.seatReservation.findMany({
-    where: { eventId: id, userId: user.id, status: "HELD", expiresAt: { gt: new Date() } },
-    include: { seat: true },
-    orderBy: { seat: { label: "asc" } },
-  });
+  const holds = await seatsReadyToCheckOut(user.id, id);
+  const unpaid = await myUnpaidOrders(user.id, id);
+  const total = holds.reduce((sum, hold) => sum + (byKey.get(hold.seat.section)?.price ?? 0), 0);
 
   return (
     <section className="mx-auto max-w-xl space-y-6">
@@ -32,9 +31,24 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
         ← Back to seats
       </Link>
       <h1 className="text-3xl font-bold">Checkout: {event.title}</h1>
-      {holds.length === 0 || !ticketType ? (
+
+      {unpaid.length > 0 ? (
+        <div className="alert-warning space-y-1">
+          <p className="font-medium">You already have an unpaid order for this event.</p>
+          {unpaid.map((order) => (
+            <p key={order.id}>
+              <Link href={`/orders/${order.id}`} className="font-medium underline">
+                Pay or cancel it
+              </Link>{" "}
+              (until {order.expiresAt.toLocaleTimeString("en-GB", { timeStyle: "short" })})
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {holds.length === 0 ? (
         <p className="text-muted">
-          You have no held seats.{" "}
+          You have no new held seats.{" "}
           <Link href={`/events/${id}`} className="text-brand-soft font-medium underline">
             Choose seats
           </Link>
@@ -42,15 +56,23 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
       ) : (
         <div className="card space-y-4">
           <ul className="space-y-1 text-sm">
-            {holds.map((hold) => (
-              <li key={hold.id} className="flex justify-between gap-3">
-                <span className="font-medium">Seat {hold.seat.label}</span>
-                <span className="text-muted">{ticketType.price.toLocaleString("en-GB")}</span>
-              </li>
-            ))}
+            {holds.map((hold) => {
+              const type = byKey.get(hold.seat.section);
+              return (
+                <li key={hold.id} className="flex justify-between gap-3">
+                  <span className="font-medium">
+                    Seat {hold.seat.label}
+                    {type ? ` · ${type.name}` : ""}
+                  </span>
+                  <span className="text-muted">
+                    {type ? type.price.toLocaleString("en-GB") : "not for sale"}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
           <p className="border-line border-t pt-3 text-lg font-semibold">
-            Total: {(ticketType.price * holds.length).toLocaleString("en-GB")}
+            Total: {total.toLocaleString("en-GB")}
           </p>
           <CheckoutForm
             eventId={id}
@@ -59,7 +81,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
           <form action={cancelHolds}>
             <input type="hidden" name="eventId" value={id} />
             <button type="submit" className="btn btn-danger">
-              Cancel and release my seats
+              Cancel and release my new seats
             </button>
           </form>
         </div>
