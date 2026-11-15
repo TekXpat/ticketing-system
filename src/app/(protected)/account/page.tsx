@@ -1,5 +1,6 @@
 import { ExpandDetails } from "@/components/expand-details";
 import { TicketList } from "@/components/ticket-list";
+import { signOut } from "@/lib/auth/actions";
 import { requireUser } from "@/lib/auth/session";
 import { getMyTickets } from "@/lib/tickets/mine";
 
@@ -16,7 +17,7 @@ export default async function AccountPage() {
         <p className="text-muted text-sm">Manage your profile and view your tickets.</p>
       </div>
 
-      {/* email is always visible for the e2e test */}
+      {/* Always-visible email for e2e test */}
       <p className="sr-only" data-testid="account-email">
         {user.email}
       </p>
@@ -26,6 +27,13 @@ export default async function AccountPage() {
         createdAt={user.createdAt.toLocaleDateString("en-GB", { dateStyle: "long" })}
         initialName={user.name ?? ""}
       />
+
+      {/* Sign out — visible on the page so Playwright can find it */}
+      <form action={signOut}>
+        <button type="submit" className="btn btn-outline">
+          Sign out
+        </button>
+      </form>
 
       <div id="tickets" className="space-y-4">
         <h2 className="text-xl font-semibold">My Tickets</h2>
