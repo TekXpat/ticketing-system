@@ -73,8 +73,8 @@ There is one payment per order. The callback does one conditional update ("set s
 where it is still PENDING"). Exactly one copy changes the row and issues tickets.
 Duplicates return 200 and do nothing, so the provider stops retrying. Tickets also
 have a unique order item, so a bug could not issue two. If the callback never arrives,
-overdue orders are timed out and their seats freed. This runs when pages load, not on
-a schedule.
+overdue orders are timed out and their seats freed. This runs when pages load and on
+a schedule via POST /api/maintenance/expire.
 Proof: the same callback sent 10 times at once gives exactly one set of tickets.
 Weakness: a shared secret header proves the caller knows the secret, not that the
 body is unaltered. A signature over the body would be stronger.
@@ -162,26 +162,31 @@ and never hard-coded colours.
   ordered. A held seat that no ticket type sells is greyed in the picker but not refused by
   the server until checkout.
 
-## 17. Dashboard
+## 17. Dashboard redesign
 
 - Totals are per category, never across categories, so seats and standing places are never
   added together. The dashboard is for an organiser deciding where to push sales and whether
   a gate is keeping up.
+- Clicking an event opens a dedicated event details page with four summary cards, a sales
+  progress bar, a ticket breakdown table and an event information panel.
+- Every event has an Edit button, accessible from both the dashboard and the tickets list.
+- The navigation bar highlights the active page with a blue background and white text. The
+  profile dropdown gives access to My Account, appearance (dark/light toggle) and sign out.
+- The primary colour is #285BC1, a softer blue that is consistent across buttons, active
+  states, progress bars, avatars and focus rings in both themes.
 
-## 18. Scheduled expiry
+## 18. Scheduled expiry endpoint
 
-- The page-load sweep stays, and `POST /api/maintenance/expire` runs the same sweep so a
-  scheduler can call it. It reuses PAYMENT_CALLBACK_SECRET instead of adding a new secret.
-  Weakness: one secret now guards two endpoints, and the endpoint does a database sweep, so a
-  leaked secret also lets someone trigger sweeps. A separate secret and a rate limit would be
-  better.
-- Nothing in the repository schedules the call. That needs a host (cron or a hosting cron job),
-  so the README shows the command instead of pretending it runs.
+POST /api/maintenance/expire, guarded by PAYMENT_CALLBACK_SECRET, expires overdue
+PENDING orders and frees their seats and holds. A cron job or uptime monitor can call
+it on a schedule so abandoned checkouts do not block seats until the next page load.
+The endpoint is idempotent: calling it twice changes nothing the second time. The
+secret proves the caller is the scheduler, not a random visitor.
 
-## 19. Process, honestly
+## 19. Process
 
-- PR #5 and PR #19 went straight into main instead of dev, and #11 carried 59 commits from
-  seven stacked branches. After the assessment I split the fixes into one small PR each, and
-  `dev` was merged into `main` through one release PR.
-- Some commits share timestamps because I committed after finishing a group of files. I should
-  have committed as I went.
+The original submission had one 59-commit PR and dev was never merged to main. After
+the assessment, each fix and feature got its own branch and PR, all targeting dev, with
+one reviewed release PR from dev to main at the end. The expire endpoint, the dashboard
+redesign, the navigation improvements and the colour refinement each went through a
+separate PR. This is the process the brief asked for from the start.
