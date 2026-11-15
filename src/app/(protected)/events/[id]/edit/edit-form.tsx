@@ -1,211 +1,223 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { deleteEvent, updateEvent, type EditEventState } from "@/lib/events/edit-actions";
+import { editEvent, removeEvent } from "@/lib/events/edit-actions";
 
-type TypeView = {
-  id: string;
+type TicketType = {
+  id?: string;
   name: string;
   price: number;
   quantity: number;
-  maxPerCustomer: number | null;
   seated: boolean;
 };
-type Row = { id: string; name: string; price: string; quantity: string; maxPerCustomer: string };
 
-const initialState: EditEventState = {};
+type Props = {
+  eventId: string;
+  defaultValues: {
+    title: string;
+    kind: string;
+    location: string;
+    startsAt: string;
+    ticketTypes: TicketType[];
+  };
+};
 
-function FieldError({ messages }: { messages?: string[] }) {
-  const unique = [...new Set(messages ?? [])];
-  if (unique.length === 0) return null;
-  return (
-    <div role="alert" className="text-danger space-y-1 text-sm">
-      {unique.map((message) => (
-        <p key={message}>{message}</p>
-      ))}
-    </div>
-  );
-}
+export function EditForm({ eventId, defaultValues }: Props) {
+  const [types, setTypes] = useState<TicketType[]>(defaultValues.ticketTypes);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
-export function EditForm({
-  event,
-}: {
-  event: { id: string; title: string; location: string; startsAt: string; types: TypeView[] };
-}) {
-  const [state, formAction, pending] = useActionState(updateEvent, initialState);
-  const errors = state.fieldErrors ?? {};
+  const action = editEvent.bind(null, eventId);
+  const [state, formAction, pending] = useActionState(action, {});
 
-  const [title, setTitle] = useState(event.title);
-  const [location, setLocation] = useState(event.location);
-  const [startsAt, setStartsAt] = useState(event.startsAt);
-  const [rows, setRows] = useState<Row[]>(
-    event.types.map((type) => ({
-      id: type.id,
-      name: type.name,
-      price: String(type.price),
-      quantity: String(type.quantity),
-      maxPerCustomer: type.maxPerCustomer === null ? "" : String(type.maxPerCustomer),
-    })),
-  );
-
-  function updateRow(index: number, patch: Partial<Row>) {
-    setRows((previous) => previous.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  function updateType(index: number, field: keyof TicketType, value: string | number) {
+    setTypes((prev) => prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)));
   }
 
-  const payload = JSON.stringify(
-    rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      price: row.price === "" ? null : Number(row.price),
-      quantity: row.quantity === "" ? null : Number(row.quantity),
-      maxPerCustomer: row.maxPerCustomer === "" ? null : Number(row.maxPerCustomer),
-    })),
-  );
+  function addType() {
+    setTypes((prev) => [...prev, { name: "", price: 0, quantity: 1, seated: false }]);
+  }
+
+  function removeType(index: number) {
+    setTypes((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function handleDelete() {
+    const result = await removeEvent(eventId);
+    if (result?.error) setDeleteError(result.error);
+  }
 
   return (
-    <div className="space-y-6">
-      <form action={formAction} className="card space-y-4">
-        <input type="hidden" name="eventId" value={event.id} />
+    <form action={formAction} className="space-y-6">
+      {state.error && <p className="text-sm text-red-500">{state.error}</p>}
 
-        <div className="space-y-1">
-          <label htmlFor="title" className="block text-sm font-medium">
-            Title
-          </label>
-          <input
-            id="title"
-            name="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="input"
-          />
-          <FieldError messages={errors.title} />
-        </div>
+      {/* Title */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium" htmlFor="title">
+          Title
+        </label>
+        <input
+          id="title"
+          name="title"
+          defaultValue={defaultValues.title}
+          className="input w-full"
+          required
+        />
+        {state.fieldErrors?.title && (
+          <p className="text-xs text-red-500">{state.fieldErrors.title[0]}</p>
+        )}
+      </div>
 
-        <div className="space-y-1">
-          <label htmlFor="location" className="block text-sm font-medium">
-            Location (optional)
-          </label>
-          <input
-            id="location"
-            name="location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="input"
-          />
-        </div>
+      {/* Kind */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium" htmlFor="kind">
+          Category
+        </label>
+        <select id="kind" name="kind" defaultValue={defaultValues.kind} className="input w-full">
+          <option value="bus">Bus</option>
+          <option value="concert">Concert</option>
+          <option value="conference">Conference</option>
+        </select>
+      </div>
 
-        <div className="space-y-1">
-          <label htmlFor="startsAt" className="block text-sm font-medium">
-            Starts at
-          </label>
-          <input
-            id="startsAt"
-            name="startsAt"
-            type="datetime-local"
-            value={startsAt}
-            onChange={(e) => setStartsAt(e.target.value)}
-            className="input"
-          />
-          <FieldError messages={errors.startsAt} />
-        </div>
+      {/* Location */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium" htmlFor="location">
+          Location / Route
+        </label>
+        <input
+          id="location"
+          name="location"
+          defaultValue={defaultValues.location}
+          className="input w-full"
+        />
+      </div>
 
-        <h2 className="border-line border-t pt-4 text-xl font-semibold">Ticket types</h2>
-        <p className="text-muted text-sm">
-          A new price applies to new orders only. A quantity cannot go below what is already sold or
-          reserved. The number of seats of a seated ticket cannot change.
-        </p>
+      {/* Date */}
+      <div className="space-y-1">
+        <label className="text-sm font-medium" htmlFor="startsAt">
+          Date &amp; Time
+        </label>
+        <input
+          id="startsAt"
+          name="startsAt"
+          type="datetime-local"
+          defaultValue={defaultValues.startsAt}
+          className="input w-full"
+          required
+        />
+        {state.fieldErrors?.startsAt && (
+          <p className="text-xs text-red-500">{state.fieldErrors.startsAt[0]}</p>
+        )}
+      </div>
 
-        {rows.map((row, index) => {
-          const seated = event.types[index]?.seated ?? false;
-          return (
-            <fieldset
-              key={row.id}
-              className="border-line bg-surface-2 space-y-3 rounded-lg border p-3"
-            >
-              <legend className="px-1 text-sm font-semibold">Ticket type {index + 1}</legend>
-              <div className="space-y-1">
-                <label htmlFor={`name-${row.id}`} className="block text-sm font-medium">
-                  Name
-                </label>
-                <input
-                  id={`name-${row.id}`}
-                  value={row.name}
-                  onChange={(e) => updateRow(index, { name: e.target.value })}
-                  className="input"
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor={`price-${row.id}`} className="block text-sm font-medium">
-                  Price (whole number)
-                </label>
-                <input
-                  id={`price-${row.id}`}
-                  type="number"
-                  min="0"
-                  value={row.price}
-                  onChange={(e) => updateRow(index, { price: e.target.value })}
-                  className="input"
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor={`quantity-${row.id}`} className="block text-sm font-medium">
-                  {seated ? "Seats (cannot be changed)" : "Quantity"}
-                </label>
-                <input
-                  id={`quantity-${row.id}`}
-                  type="number"
-                  min="1"
-                  value={row.quantity}
-                  disabled={seated}
-                  onChange={(e) => updateRow(index, { quantity: e.target.value })}
-                  className="input"
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor={`max-${row.id}`} className="block text-sm font-medium">
-                  Max per customer (optional)
-                </label>
-                <input
-                  id={`max-${row.id}`}
-                  type="number"
-                  min="1"
-                  value={row.maxPerCustomer}
-                  onChange={(e) => updateRow(index, { maxPerCustomer: e.target.value })}
-                  className="input"
-                />
-              </div>
-            </fieldset>
-          );
-        })}
+      {/* Ticket types */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium">Ticket Types</p>
+        {state.fieldErrors?.ticketTypes && (
+          <p className="text-xs text-red-500">{state.fieldErrors.ticketTypes[0]}</p>
+        )}
+        {types.map((type, i) => (
+          <div key={i} className="card flex flex-wrap items-end gap-3">
+            <div className="min-w-[140px] flex-1 space-y-1">
+              <label className="text-muted text-xs">Name</label>
+              <input
+                className="input w-full"
+                value={type.name}
+                onChange={(e) => updateType(i, "name", e.target.value)}
+                placeholder="e.g. Regular"
+              />
+            </div>
+            <div className="w-28 space-y-1">
+              <label className="text-muted text-xs">Price (RWF)</label>
+              <input
+                type="number"
+                min={0}
+                className="input w-full"
+                value={type.price}
+                onChange={(e) => updateType(i, "price", Number(e.target.value))}
+              />
+            </div>
+            <div className="w-28 space-y-1">
+              <label className="text-muted text-xs">Quantity</label>
+              <input
+                type="number"
+                min={1}
+                className="input w-full"
+                value={type.quantity}
+                disabled={type.seated}
+                onChange={(e) => updateType(i, "quantity", Number(e.target.value))}
+              />
+            </div>
+            {!type.seated && types.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeType(i)}
+                className="btn btn-secondary text-xs"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        ))}
 
-        <FieldError messages={errors.ticketTypes} />
-        {state.error ? (
-          <p role="alert" className="alert-error">
-            {state.error}
-          </p>
-        ) : null}
+        {types.every((t) => !t.seated) && (
+          <button type="button" onClick={addType} className="btn btn-secondary text-sm">
+            + Add ticket type
+          </button>
+        )}
+      </div>
 
-        <input type="hidden" name="ticketTypes" value={payload} />
-        <button type="submit" disabled={pending} className="btn btn-primary">
-          {pending ? "Saving…" : "Save changes"}
-        </button>
-      </form>
+      {/* Hidden ticket types JSON */}
+      <input
+        type="hidden"
+        name="ticketTypes"
+        value={JSON.stringify(
+          types.map(({ id, name, price, quantity }) => ({ id, name, price, quantity })),
+        )}
+      />
 
-      <form
-        action={deleteEvent}
-        onSubmit={(e) => {
-          if (!window.confirm("Delete this event? This cannot be undone.")) e.preventDefault();
-        }}
-        className="card space-y-2"
-      >
-        <input type="hidden" name="eventId" value={event.id} />
-        <p className="text-muted text-sm">
-          An event can be deleted only while nobody has bought or reserved a ticket.
-        </p>
-        <button type="submit" className="btn btn-danger">
-          Delete this event
-        </button>
-      </form>
-    </div>
+      {/* Save */}
+      <button type="submit" disabled={pending} className="btn btn-primary w-full">
+        {pending ? "Saving…" : "Save Changes"}
+      </button>
+
+      {/* Delete */}
+      <div className="border-line space-y-3 border-t pt-4">
+        {!showConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowConfirm(true)}
+            className="btn btn-secondary w-full text-red-400"
+          >
+            Delete Event
+          </button>
+        ) : (
+          <div className="card space-y-3 border-red-500/40">
+            <p className="text-sm">
+              Are you sure you want to delete this event? This action may affect event availability
+              and ticket management.
+            </p>
+            {deleteError && <p className="text-xs text-red-500">{deleteError}</p>}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowConfirm(false)}
+                className="btn btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="btn btn-primary flex-1 bg-red-600 hover:bg-red-700"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </form>
   );
 }

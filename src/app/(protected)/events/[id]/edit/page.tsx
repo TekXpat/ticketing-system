@@ -1,53 +1,46 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireOrganiser } from "@/lib/auth/session";
+import Link from "next/link";
 import { db } from "@/lib/db";
+import { requireOrganiser } from "@/lib/auth/session";
 import { EditForm } from "./edit-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditEventPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const user = await requireOrganiser();
+export default async function EditEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { error } = await searchParams;
+  const organiser = await requireOrganiser();
 
-  // Only the organiser who created the event can edit it.
-  const event = await db.event.findFirst({
-    where: { id, organiserId: user.id },
+  const event = await db.event.findUnique({
+    where: { id },
     include: { ticketTypes: { orderBy: { price: "desc" } } },
   });
+
   if (!event) notFound();
+  if (event.organiserId !== organiser.id) notFound();
 
   return (
-    <section className="mx-auto max-w-xl space-y-6">
-      <Link href="/events" className="nav-link">
-        ← Back to tickets
-      </Link>
-      <h1 className="text-3xl font-bold">Edit event</h1>
-      {error ? (
-        <p role="alert" className="alert-error">
-          {error}
-        </p>
-      ) : null}
+    <section className="max-w-2xl space-y-6">
+      <div className="space-y-1">
+        <Link href="/dashboard" className="nav-link text-sm">
+          ← Back to Dashboard
+        </Link>
+        <h1 className="text-3xl font-bold">Edit Event</h1>
+        <p className="text-muted text-sm">{event.title}</p>
+      </div>
+
       <EditForm
-        event={{
-          id: event.id,
+        eventId={event.id}
+        defaultValues={{
           title: event.title,
+          kind: event.kind,
           location: event.location ?? "",
           startsAt: event.startsAt.toISOString().slice(0, 16),
-          types: event.ticketTypes.map((type) => ({
-            id: type.id,
-            name: type.name,
-            price: type.price,
-            quantity: type.quantity,
-            maxPerCustomer: type.maxPerCustomer,
-            seated: type.seated,
+          ticketTypes: event.ticketTypes.map((t) => ({
+            id: t.id,
+            name: t.name,
+            price: t.price,
+            quantity: t.quantity,
+            seated: t.seated,
           })),
         }}
       />

@@ -1,109 +1,122 @@
 import { db } from "@/lib/db";
-import type { UpdateEventInput } from "./update-schema";
 
 export type EditResult = { ok: true } | { ok: false; error: string };
 
-// Tickets in use: paid orders, plus unpaid orders that have not expired.
-const activeOrder = (now: Date) => ({
-  OR: [{ status: "PAID" as const }, { status: "PENDING" as const, expiresAt: { gt: now } }],
-});
+type UpdateInput = {
+  title: string;
+  startsAt: Date;
+  ticketTypes: {
+    id?: string;
+    name: string;
+    price: number;
+    quantity: number;
+    maxPerCustomer?: number | null;
+  }[];
+  kind?: string;
+  location?: string;
+};
 
-// Changes an event the organiser owns. Rules:
-// - a price change affects new orders only (old items keep their copied price)
-// - a standing quantity cannot go below what is already sold or reserved
-// - a seated quantity is the number of seats and cannot change
+// Update an event's metadata and ticket type prices/quantities.
+// Rules:
+//   - Only the event's organiser may edit it.
+//   - Standing quantity cannot go below what is already sold or reserved.
+//   - Seated events: seat count is fixed (the grid does not change).
+//   - Price changes apply to new orders only (existing order items keep their price).
 export async function updateEventForOrganiser(
   organiserId: string,
   eventId: string,
-  input: UpdateEventInput,
+  data: UpdateInput,
 ): Promise<EditResult> {
-  const now = new Date();
+  const event = await db.event.findUnique({
+    where: { id: eventId, organiserId },
+    include: { ticketTypes: true },
+  });
 
-  return db.$transaction(async (tx): Promise<EditResult> => {
-    const event = await tx.event.findFirst({
-      where: { id: eventId, organiserId },
-      include: { ticketTypes: true },
-    });
-    if (!event) return { ok: false, error: "Event not found." };
+  if (!event) return { ok: false, error: "Event not found." };
 
-    // Lock the ticket types so the sold count cannot change while we compare.
-    for (const id of event.ticketTypes.map((type) => type.id).sort()) {
-      await tx.$queryRaw`SELECT id FROM ticket_types WHERE id = ${id} FOR UPDATE`;
-    }
+  // Check quantity floors for existing types.
+  for (const incoming of data.ticketTypes) {
+    if (!incoming.id) continue;
+    const existing = event.ticketTypes.find((t) => t.id === incoming.id);
+    if (!existing) continue;
 
-    if (input.ticketTypes.length !== event.ticketTypes.length) {
-      return { ok: false, error: "Send every ticket type of the event." };
-    }
-
-    const names = new Set<string>();
-    for (const change of input.ticketTypes) {
-      const key = change.name.toLowerCase();
-      if (names.has(key))
-        return { ok: false, error: `Two ticket types are called "${change.name}".` };
-      names.add(key);
-    }
-
-    for (const change of input.ticketTypes) {
-      const current = event.ticketTypes.find((type) => type.id === change.id);
-      if (!current) return { ok: false, error: "That ticket type does not belong to this event." };
-
-      if (current.seated) {
-        if (change.quantity !== current.quantity) {
-          return {
-            ok: false,
-            error: `The number of seats for "${current.name}" cannot be changed after the event is created.`,
-          };
-        }
-        continue;
+    if (existing.seated) {
+      if (incoming.quantity !== existing.quantity) {
+        return { ok: false, error: `Seat count for "${existing.name}" cannot change.` };
       }
-
-      const sold = await tx.orderItem.count({
-        where: { ticketTypeId: current.id, order: activeOrder(now) },
+    } else {
+      const soldOrReserved = await db.orderItem.count({
+        where: {
+          ticketTypeId: existing.id,
+          order: { status: { in: ["PAID", "PENDING"] } },
+        },
       });
-      if (change.quantity < sold) {
+      if (incoming.quantity < soldOrReserved) {
         return {
           ok: false,
-          error: `You already sold or reserved ${sold} tickets of type "${current.name}", so the quantity cannot go below ${sold}.`,
+          error: `"${existing.name}" already sold or reserved ${soldOrReserved} — quantity cannot go below that.`,
         };
       }
     }
+  }
 
+  await db.$transaction(async (tx) => {
     await tx.event.update({
       where: { id: eventId },
-      data: { title: input.title, location: input.location ?? null, startsAt: input.startsAt },
+      data: {
+        title: data.title,
+        kind: data.kind ?? event.kind,
+        location: data.location ?? event.location,
+        startsAt: data.startsAt,
+      },
     });
-    for (const change of input.ticketTypes) {
-      await tx.ticketType.update({
-        where: { id: change.id },
-        data: {
-          name: change.name,
-          price: change.price,
-          quantity: change.quantity,
-          maxPerCustomer: change.maxPerCustomer ?? null,
-        },
-      });
+
+    for (const type of data.ticketTypes) {
+      if (type.id) {
+        await tx.ticketType.update({
+          where: { id: type.id },
+          data: { name: type.name, price: type.price, quantity: type.quantity },
+        });
+      } else {
+        await tx.ticketType.create({
+          data: {
+            eventId,
+            name: type.name,
+            price: type.price,
+            quantity: type.quantity,
+            seated: false,
+          },
+        });
+      }
     }
-    return { ok: true };
   });
+
+  return { ok: true };
 }
 
-// Deletes an event the organiser owns, but only when nobody has paid or reserved
-// tickets. Cancelling a sold event would need refunds, which are out of scope.
+// Delete an event.
+// Rules:
+//   - Only the organiser may delete.
+//   - If any PAID or PENDING order exists, refuse.
 export async function deleteEventForOrganiser(
   organiserId: string,
   eventId: string,
 ): Promise<EditResult> {
-  const event = await db.event.findFirst({
+  const event = await db.event.findUnique({
     where: { id: eventId, organiserId },
-    select: { id: true },
+    include: {
+      orders: {
+        where: { status: { in: ["PAID", "PENDING"] } },
+        take: 1,
+      },
+    },
   });
-  if (!event) return { ok: false, error: "Event not found." };
 
-  const busy = await db.order.count({ where: { eventId, ...activeOrder(new Date()) } });
-  if (busy > 0) {
+  if (!event) return { ok: false, error: "Event not found." };
+  if (event.orders.length > 0) {
     return {
       ok: false,
-      error: "This event has sold or reserved tickets, so it cannot be deleted.",
+      error: "This event has active orders. Cancel all orders before deleting.",
     };
   }
 

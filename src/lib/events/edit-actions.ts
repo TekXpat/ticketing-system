@@ -3,45 +3,44 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOrganiser } from "@/lib/auth/session";
-import { deleteEventForOrganiser, updateEventForOrganiser } from "./edit";
+import { updateEventForOrganiser, deleteEventForOrganiser } from "./edit";
 import { updateEventSchema } from "./update-schema";
 
 export type EditEventState = {
-  error?: string;
   fieldErrors?: Record<string, string[] | undefined>;
+  error?: string;
 };
 
-export async function updateEvent(
+export async function editEvent(
+  eventId: string,
   _prev: EditEventState,
   formData: FormData,
 ): Promise<EditEventState> {
   const organiser = await requireOrganiser();
-  const eventId = String(formData.get("eventId") ?? "");
 
   const raw: Record<string, unknown> = Object.fromEntries(formData);
   if (raw.location === "") delete raw.location;
+
   try {
     raw.ticketTypes = JSON.parse(String(raw.ticketTypes ?? "[]"));
   } catch {
-    return { error: "The ticket types could not be read." };
+    return { fieldErrors: { ticketTypes: ["Could not read ticket types."] } };
   }
 
   const parsed = updateEventSchema.safeParse(raw);
-  if (!parsed.success) return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
+  if (!parsed.success) {
+    return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
+  }
 
   const result = await updateEventForOrganiser(organiser.id, eventId, parsed.data);
   if (!result.ok) return { error: result.error };
 
-  redirect("/events");
+  redirect("/dashboard");
 }
 
-export async function deleteEvent(formData: FormData): Promise<void> {
+export async function removeEvent(eventId: string): Promise<EditEventState> {
   const organiser = await requireOrganiser();
-  const eventId = String(formData.get("eventId") ?? "");
-
   const result = await deleteEventForOrganiser(organiser.id, eventId);
-  if (!result.ok) {
-    redirect(`/events/${eventId}/edit?error=${encodeURIComponent(result.error)}`);
-  }
-  redirect("/events");
+  if (!result.ok) return { error: result.error };
+  redirect("/dashboard");
 }
