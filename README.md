@@ -38,7 +38,8 @@ To promote an account (there is no admin screen):
 3. **Account** shows your tickets as a QR code and a text code, with a PDF download.
 4. As the organiser or staff, open **Gate**, choose the category and the event, and scan
    the QR with the camera, upload a picture of it, or paste the code.
-5. **Dashboard** (organiser) shows sales, revenue and scans, grouped by category.
+5. **Dashboard** (organiser) shows sales, revenue and scans, grouped by category. Click
+   an event to see its details, progress, ticket breakdown and issued tickets.
 
 ## The three hard problems
 
@@ -65,6 +66,18 @@ Why each choice, and what is unsure, is in [DECISIONS.md](DECISIONS.md).
 Code changes reload automatically. Checks CI runs, which you can run in the dev container:
 `docker compose run --rm migrate npm run format:check` (also `lint`, `typecheck`, `build`).
 
+## Scheduled cleanup
+
+Expired orders and holds are cleaned up when a page loads, and also on demand:
+
+```sh
+curl -X POST http://localhost:3000/api/maintenance/expire \
+  -H "x-callback-secret: dev-callback-secret"
+```
+
+Point a cron job or uptime monitor at this endpoint to keep the database clean without
+requiring a page load.
+
 ## Configuration
 
 `.env` is created from [`.env.example`](.env.example) on the first `make up`. Two secrets
@@ -78,9 +91,9 @@ have development defaults that must be replaced anywhere else:
 - **Mixed events.** One event cannot have both a seat picker and standing tickets (a seated
   circle plus a standing floor). The data model allows it, but checkout would need to combine
   both in one order. Seated and standing events each work.
-- **Expired holds, orders and payments are cleaned up when a page loads, not on a schedule.**
-  If nobody visits, an abandoned checkout keeps its seats until the next visit. A scheduled
-  job would fix it.
+- **Expired holds, orders and payments** are cleaned up when a page loads, and also by
+  `POST /api/maintenance/expire` (guarded by `PAYMENT_CALLBACK_SECRET`), which a cron job
+  or uptime monitor can call on a schedule.
 - **Refunds are out of scope.** A payment that arrives after its place was resold, or after
   the sweeper timed the order out, takes the customer's money and issues no ticket.
 - **The callback uses a shared secret header**, not a signature over the body. It proves the
