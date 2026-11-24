@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { APP_NAME } from "@/lib/config";
 import { getCurrentUser } from "@/lib/auth/session";
 import { NavBar } from "@/components/nav-bar";
+import { SplashScreen } from "@/components/splash-screen";
 import "./globals.css";
 
-export const metadata: Metadata = { title: APP_NAME };
+export const metadata: Metadata = { title: "Tikets" };
 
 const themeScript = `(function () {
   try {
@@ -27,13 +27,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
+
       <body className="bg-page text-ink min-h-screen antialiased">
+        <SplashScreen />
+
         <header className="border-line bg-surface sticky top-0 z-20 border-b">
           <nav className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold">
               <span className="bg-brand inline-block h-5 w-5 rounded" aria-hidden="true" />
-              {APP_NAME}
+              Tikets
             </Link>
+
             <NavBar
               user={
                 user
@@ -50,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             />
           </nav>
         </header>
+
         <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
       </body>
     </html>
