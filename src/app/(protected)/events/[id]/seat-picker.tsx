@@ -3,16 +3,18 @@
 import { useState, useTransition } from "react";
 import { holdSeat, releaseSeat, releaseMySeats } from "@/lib/seats/actions";
 
-type SeatView = { id: string; label: string; colIndex: number };
+type SeatView = { id: string; label: string; colIndex: number; section: string };
+type SectionView = { key: string; name: string; price: number };
 
 type Props = {
   eventId: string;
   seats: SeatView[];
+  sections: SectionView[];
   takenSeatIds: string[];
   mySeatIds: string[];
 };
 
-export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
+export function SeatPicker({ eventId, seats, sections, takenSeatIds, mySeatIds }: Props) {
   const [taken, setTaken] = useState(() => new Set(takenSeatIds));
   const [mine, setMine] = useState(() => new Set(mySeatIds));
   const [message, setMessage] = useState<string | null>(null);
@@ -20,6 +22,21 @@ export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
 
   const columns = seats.length === 0 ? 1 : Math.max(...seats.map((s) => s.colIndex)) + 1;
   const free = seats.length - taken.size - mine.size;
+
+  // One block per ticket type, so each seat shows what it costs. Seats that no
+  // ticket type sells are shown last and cannot be chosen.
+  const groups = [
+    ...sections.map((section) => ({
+      title: `${section.name} · ${section.price.toLocaleString("en-GB")}`,
+      forSale: true,
+      seats: seats.filter((seat) => seat.section === section.key),
+    })),
+    {
+      title: "Not for sale",
+      forSale: false,
+      seats: seats.filter((seat) => !sections.some((section) => section.key === seat.section)),
+    },
+  ].filter((group) => group.seats.length > 0);
 
   function choose(seatId: string) {
     setMessage(null);
@@ -47,8 +64,9 @@ export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
           `Seat held until ${result.expiresAt.toLocaleTimeString("en-GB", { timeStyle: "short" })}.`,
         );
       } else {
-        // Someone else won the race, so show the seat as taken from now on.
-        setTaken((prev) => new Set(prev).add(seatId));
+        // Someone else won the race, or a limit applies. Only a lost race makes
+        // the seat taken for everyone.
+        if (result.error.includes("just taken")) setTaken((prev) => new Set(prev).add(seatId));
         setMessage(result.error);
       }
     });
@@ -80,29 +98,37 @@ export function SeatPicker({ eventId, seats, takenSeatIds, mySeatIds }: Props) {
         <span className="badge badge-blue">{mine.size} held by you</span>
       </p>
 
-      <div className="grid w-max gap-2" style={{ gridTemplateColumns: `repeat(${columns}, 3rem)` }}>
-        {seats.map((seat) => {
-          const isMine = mine.has(seat.id);
-          const isTaken = taken.has(seat.id);
-          const style = isMine
-            ? "border-brand bg-brand text-on-brand"
-            : isTaken
-              ? "border-line bg-surface-2 text-muted line-through"
-              : "border-line bg-surface text-ink hover:border-brand hover:bg-surface-2";
-          return (
-            <button
-              key={seat.id}
-              type="button"
-              disabled={isTaken || pending}
-              onClick={() => choose(seat.id)}
-              title={isMine ? "Click to give this seat back" : undefined}
-              className={`focus-visible:outline-focus h-12 rounded-lg border text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed ${style}`}
-            >
-              {seat.label}
-            </button>
-          );
-        })}
-      </div>
+      {groups.map((group) => (
+        <div key={group.title} className="space-y-2">
+          <p className="text-sm font-semibold">{group.title}</p>
+          <div
+            className="grid w-max gap-2"
+            style={{ gridTemplateColumns: `repeat(${columns}, 3rem)` }}
+          >
+            {group.seats.map((seat) => {
+              const isMine = mine.has(seat.id);
+              const isTaken = taken.has(seat.id);
+              const style = isMine
+                ? "border-brand bg-brand text-on-brand"
+                : isTaken || !group.forSale
+                  ? "border-line bg-surface-2 text-muted line-through"
+                  : "border-line bg-surface text-ink hover:border-brand hover:bg-surface-2";
+              return (
+                <button
+                  key={seat.id}
+                  type="button"
+                  disabled={isTaken || pending || !group.forSale}
+                  onClick={() => choose(seat.id)}
+                  title={isMine ? "Click to give this seat back" : undefined}
+                  className={`focus-visible:outline-focus h-12 rounded-lg border text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed ${style}`}
+                >
+                  {seat.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
       <p className="text-muted flex flex-wrap items-center gap-4 text-sm">
         <span className="flex items-center gap-1">

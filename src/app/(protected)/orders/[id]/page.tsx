@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import nextDynamic from "next/dynamic";
 import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { cancelOrder } from "@/lib/orders/cancel";
 import { expireOverdueOrders } from "@/lib/payments/expire";
-import { Simulator } from "./simulator";
+
+const Simulator = nextDynamic(() => import("./simulator").then((m) => m.Simulator));
 
 export const dynamic = "force-dynamic";
 

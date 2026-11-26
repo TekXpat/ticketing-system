@@ -73,8 +73,8 @@ There is one payment per order. The callback does one conditional update ("set s
 where it is still PENDING"). Exactly one copy changes the row and issues tickets.
 Duplicates return 200 and do nothing, so the provider stops retrying. Tickets also
 have a unique order item, so a bug could not issue two. If the callback never arrives,
-overdue orders are timed out and their seats freed. This runs when pages load, not on
-a schedule.
+overdue orders are timed out and their seats freed. This runs when pages load and on
+a schedule via POST /api/maintenance/expire.
 Proof: the same callback sent 10 times at once gives exactly one set of tickets.
 Weakness: a shared secret header proves the caller knows the secret, not that the
 body is unaltered. A signature over the body would be stronger.
@@ -116,3 +116,77 @@ on the tickets page, which also counts unpaid orders that have not expired.
 There is one set of colour variables with a light and a dark theme, and one toggle that
 remembers the choice and follows the device on the first visit. Pages use named classes
 and never hard-coded colours.
+
+## 14. Fixes after the assessment
+
+- Late payments: settlePayment locks the ticket types and recounts before issuing tickets,
+  so an order that expired and was re-bought by someone else cannot oversell. If the sweeper
+  already timed the order out, a late success is ignored. That is safe for stock, but the
+  customer paid and has no ticket, which needs a refund (out of scope).
+- Double charge: a seat already in an unpaid or paid order cannot go into a second order.
+  The checkout list, the checkout action and createOrder all check it, and createOrder locks
+  the hold rows so two checkouts at once cannot both pass.
+- Gate: the gate admits one chosen event. A ticket for another event is refused before the
+  one-time update, so it stays unused.
+- Holds: the per-customer limit is checked when a seat is held (default 10 when the organiser
+  sets none), under a lock on the user row, so rapid clicks cannot exceed it. The rule is
+  checked at the first point a resource is reserved, not only at the last step.
+- Error messages quote the ticket type name ("tickets of type X") so an unusual name cannot
+  produce nonsense like "at most 2 12 tickets".
+
+## 15. Editing and deleting events
+
+- An organiser edits only their own events. A price change applies to new orders only,
+  because each order item copies its price. A standing quantity cannot go below what is sold
+  or reserved. A seated quantity is the number of seats and cannot change, because seats
+  already exist and may be held. Changing a bus's size after seats are held would orphan
+  holds, so it is refused rather than guessed.
+- An event is deleted only while no paid or unexpired unpaid order exists. Cancelling a sold
+  event would need refunds, which are out of scope.
+- Unsure: a small window exists between the delete check and the delete itself. A lock would
+  close it.
+
+## 16. Seat groups, flights and theatres
+
+- A ticket type owns a group of seats through its section name. A seat can be sold only as the
+  ticket type of its section, enforced in createOrder. This allows business and economy seats
+  on one bus without a schema change. A single group uses the section "main", so older events
+  and layouts keep working.
+- Layouts are reused by kind and split. The split is part of the layout name as JSON, so two
+  different splits can never share a layout.
+- Flights (six seats a row) and theatres (ten) are new seated kinds with their own gates.
+- Not built: mixed events. A seated circle plus a standing floor would need checkout to combine
+  a seat picker and quantities in one order. createOrder can already take both kinds of item,
+  so the missing piece is the page, which I judged less valuable than fixing the edge cases.
+- Unsure: seats are not checked against a section when they are held, only when they are
+  ordered. A held seat that no ticket type sells is greyed in the picker but not refused by
+  the server until checkout.
+
+## 17. Dashboard redesign
+
+- Totals are per category, never across categories, so seats and standing places are never
+  added together. The dashboard is for an organiser deciding where to push sales and whether
+  a gate is keeping up.
+- Clicking an event opens a dedicated event details page with four summary cards, a sales
+  progress bar, a ticket breakdown table and an event information panel.
+- Every event has an Edit button, accessible from both the dashboard and the tickets list.
+- The navigation bar highlights the active page with a blue background and white text. The
+  profile dropdown gives access to My Account, appearance (dark/light toggle) and sign out.
+- The primary colour is #285BC1, a softer blue that is consistent across buttons, active
+  states, progress bars, avatars and focus rings in both themes.
+
+## 18. Scheduled expiry endpoint
+
+POST /api/maintenance/expire, guarded by PAYMENT_CALLBACK_SECRET, expires overdue
+PENDING orders and frees their seats and holds. A cron job or uptime monitor can call
+it on a schedule so abandoned checkouts do not block seats until the next page load.
+The endpoint is idempotent: calling it twice changes nothing the second time. The
+secret proves the caller is the scheduler, not a random visitor.
+
+## 19. Process
+
+The original submission had one 59-commit PR and dev was never merged to main. After
+the assessment, each fix and feature got its own branch and PR, all targeting dev, with
+one reviewed release PR from dev to main at the end. The expire endpoint, the dashboard
+redesign, the navigation improvements and the colour refinement each went through a
+separate PR. This is the process the brief asked for from the start.

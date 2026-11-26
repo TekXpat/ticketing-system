@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireOrganiser } from "@/lib/auth/session";
-import { ensureBusLayout } from "./layout";
-import { createEventSchema } from "./schemas";
+import { ensureSeatLayout } from "./layout";
+import { createEventSchema, isSeatedKind } from "./schemas";
 
 export type CreateEventState = {
   fieldErrors?: Record<string, string[] | undefined>;
@@ -35,11 +35,20 @@ export async function createEvent(
     return { fieldErrors: z.flattenError(parsed.error).fieldErrors };
   }
 
-  const { title, kind, location, startsAt, capacity, ticketTypes } = parsed.data;
+  const { title, kind, location, startsAt, ticketTypes } = parsed.data;
 
-  // Only buses have assigned seats. Concerts and conferences sell a quantity.
-  const seated = kind === "bus";
-  const seatLayoutId = seated ? await ensureBusLayout(capacity) : undefined;
+  // Buses, flights and theatres have assigned seats. Each ticket type owns the
+  // group of seats with its name (a single type owns all of them, as "main").
+  const single = ticketTypes.length === 1;
+  const sectionOf = (name: string) => (single ? "main" : name);
+
+  let seatLayoutId: string | undefined;
+  if (isSeatedKind(kind)) {
+    seatLayoutId = await ensureSeatLayout(
+      kind,
+      ticketTypes.map((type) => ({ name: sectionOf(type.name), count: type.quantity })),
+    );
+  }
 
   await db.event.create({
     data: {
@@ -53,10 +62,10 @@ export async function createEvent(
         create: ticketTypes.map((type) => ({
           name: type.name,
           price: type.price,
-          // A bus sells exactly its seats, so the stock always matches the grid.
-          quantity: seated ? capacity : type.quantity,
+          quantity: type.quantity,
           maxPerCustomer: type.maxPerCustomer ?? undefined,
-          seated,
+          seated: seatLayoutId !== undefined,
+          section: seatLayoutId !== undefined ? sectionOf(type.name) : undefined,
         })),
       },
     },
