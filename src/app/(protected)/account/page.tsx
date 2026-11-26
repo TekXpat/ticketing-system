@@ -1,8 +1,13 @@
-import { ExpandDetails } from "@/components/expand-details";
-import { TicketList } from "@/components/ticket-list";
+import nextDynamic from "next/dynamic";
 import { signOut } from "@/lib/auth/actions";
 import { requireUser } from "@/lib/auth/session";
 import { getMyTickets } from "@/lib/tickets/mine";
+
+const ExpandDetails = nextDynamic(() =>
+  import("@/components/expand-details").then((m) => m.ExpandDetails),
+);
+
+const TicketList = nextDynamic(() => import("@/components/ticket-list").then((m) => m.TicketList));
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +22,6 @@ export default async function AccountPage() {
         <p className="text-muted text-sm">Manage your profile and view your tickets.</p>
       </div>
 
-      {/* Always-visible email for e2e test */}
       <p className="sr-only" data-testid="account-email">
         {user.email}
       </p>
@@ -28,7 +32,6 @@ export default async function AccountPage() {
         initialName={user.name ?? ""}
       />
 
-      {/* Sign out — visible on the page so Playwright can find it */}
       <form action={signOut}>
         <button type="submit" className="btn btn-outline">
           Sign out
